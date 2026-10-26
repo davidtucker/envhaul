@@ -90,11 +90,6 @@ jobs:
   integration:
     name: Integration (AWS emulator)
     runs-on: ubuntu-latest
-    services:
-      moto:
-        image: motoserver/moto:5.2.3
-        ports:
-          - 5000:5000
     steps:
       - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
@@ -105,10 +100,17 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      # The emulator image is pinned only in compose.yaml (kept current by
+      # Dependabot), so local runs and CI always test the same version.
+      - name: Start the AWS emulator
+        run: docker compose -f test/integration/compose.yaml up -d --wait
       - name: Integration tests
         env:
           AWS_EMULATOR_ENDPOINT: http://127.0.0.1:5000
         run: go test -tags integration -count=1 -v ./test/integration
+      - name: Emulator logs
+        if: failure()
+        run: docker compose -f test/integration/compose.yaml logs
 
   release-dry-run:
     name: Release dry run
