@@ -1,0 +1,41 @@
+# Shell completion offers component names (with descriptions), skipping ones
+# already given, and variable names for `get`.
+exec envhaul __complete sync ''
+stdout '^api\tBackend API$'
+stdout '^web\tweb/.env$'
+stdout '^:4$'
+
+exec envhaul __complete sync api ''
+! stdout '^api'
+stdout '^web'
+
+exec envhaul __complete get api ''
+stdout '^ENV$'
+stdout '^KEY$'
+! stdout '^VITE'
+
+exec envhaul __complete get nope ''
+! stdout 'ENV'
+
+exec envhaul __complete exec ''
+stdout '^api'
+
+# Without a config, completion offers nothing rather than failing.
+cd empty
+exec envhaul __complete sync ''
+! stdout 'api'
+
+-- envhaul.yaml --
+components:
+  api:
+    description: Backend API
+    env_file: api/.env
+    vars:
+      ENV: dev
+      KEY: x
+  web:
+    env_file: web/.env
+    vars:
+      VITE_URL: x
+-- empty/.git/HEAD --
+ref: refs/heads/main

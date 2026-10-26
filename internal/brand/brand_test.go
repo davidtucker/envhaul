@@ -60,3 +60,39 @@ func TestNoColor(t *testing.T) {
 		t.Errorf("ASCII small banner = %q", Small(Style{}))
 	}
 }
+
+func TestDetectStyle(t *testing.T) {
+	clear := func() {
+		for _, k := range []string{"COLORTERM", "LC_ALL", "LC_CTYPE", "LANG"} {
+			t.Setenv(k, "")
+		}
+	}
+	tests := []struct {
+		name string
+		env  map[string]string
+		want Style
+	}{
+		{"no locale defaults to unicode", nil, Style{Color: true, Unicode: true}},
+		{"truecolor", map[string]string{"COLORTERM": "truecolor"}, Style{Color: true, TrueColor: true, Unicode: true}},
+		{"24bit", map[string]string{"COLORTERM": "24bit"}, Style{Color: true, TrueColor: true, Unicode: true}},
+		{"utf-8 LANG", map[string]string{"LANG": "en_US.UTF-8"}, Style{Color: true, Unicode: true}},
+		{"C locale is ascii", map[string]string{"LANG": "C"}, Style{Color: true}},
+		{"LC_ALL wins over LANG", map[string]string{"LC_ALL": "POSIX", "LANG": "en_US.UTF-8"}, Style{Color: true}},
+		{"utf8 spelling", map[string]string{"LC_CTYPE": "en_GB.utf8"}, Style{Color: true, Unicode: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clear()
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
+			if got := DetectStyle(true); got != tt.want {
+				t.Errorf("DetectStyle = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+	clear()
+	if DetectStyle(false).Color {
+		t.Error("color=false must disable color")
+	}
+}

@@ -3,6 +3,8 @@ package awsclient
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -73,5 +75,76 @@ func TestExplain(t *testing.T) {
 	once := Explain(errors.New("failed to get shared config profile, x"), "x")
 	if Explain(once, "x") != once { //nolint:errorlint // identity is the point
 		t.Error("Explain should be idempotent")
+	}
+}
+
+// isolateAWSConfig points the SDK at temporary shared config files so tests
+// never read the developer's real ~/.aws or environment.
+func isolateAWSConfig(t *testing.T, config string) {
+	t.Helper()
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config")
+	credPath := filepath.Join(dir, "credentials")
+	if err := os.WriteFile(cfgPath, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(credPath, []byte("[alpha]\naws_access_key_id = AKIDEXAMPLE\naws_secret_access_key = secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("AWS_CONFIG_FILE", cfgPath)
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", credPath)
+	for _, k := range []string{"AWS_PROFILE", "AWS_DEFAULT_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"} {
+		t.Setenv(k, "")
+	}
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+}
+
+func TestDefaultLoaderNamedProfile(t *testing.T) {
+	isolateAWSConfig(t, "[profile alpha]\nregion = eu-west-1\n\n[profile beta]\nregion = ap-southeast-2\n")
+	ctx := context.Background()
+
+	cfg, err := DefaultLoader(ctx, "alpha", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Region != "eu-west-1" {
+		t.Errorf("profile region = %q, want eu-west-1", cfg.Region)
+	}
+	creds, err := cfg.Credentials.Retrieve(ctx)
+	if err != nil || creds.AccessKeyID != "AKIDEXAMPLE" {
+		t.Errorf("credentials = %+v, %v; want the alpha profile's keys", creds, err)
+	}
+
+	// An explicit region (aws_region or --region) wins over the profile's.
+	cfg, err = DefaultLoader(ctx, "beta", "us-west-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Region != "us-west-2" {
+		t.Errorf("region override = %q, want us-west-2", cfg.Region)
+	}
+}
+
+func TestNewCacheExplainsMissingProfile(t *testing.T) {
+	isolateAWSConfig(t, "[profile alpha]\nregion = eu-west-1\n")
+	_, err := NewCache().Config(context.Background(), "does-not-exist", "")
+	if err == nil || !strings.Contains(err.Error(), `AWS profile "does-not-exist" not found`) {
+		t.Errorf("err = %v, want a missing-profile explanation", err)
+	}
+}
+
+func TestCacheLoaderErrorIsCached(t *testing.T) {
+	var loads atomic.Int32
+	c := NewCacheWithLoader(func(context.Context, string, string) (aws.Config, error) {
+		loads.Add(1)
+		return aws.Config{}, errors.New("failed to get shared config profile, x")
+	})
+	for range 3 {
+		if _, err := c.Config(context.Background(), "x", ""); err == nil {
+			t.Fatal("expected an error")
+		}
+	}
+	if loads.Load() != 1 {
+		t.Errorf("loader called %d times; a failing profile should only be tried once per run", loads.Load())
 	}
 }

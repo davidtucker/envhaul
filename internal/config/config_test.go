@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -212,5 +213,69 @@ func TestDiscoverStopsAtRepoRoot(t *testing.T) {
 	}
 	if _, err := Discover(repo); !errors.Is(err, ErrNotFound) {
 		t.Errorf("Discover should not escape the repository, err = %v", err)
+	}
+}
+
+func TestLoad(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "envhaul.yaml")
+	if err := os.WriteFile(path, []byte(sample), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Path != path || cfg.Dir() != dir {
+		t.Errorf("Path=%q Dir=%q, want the absolute file and its directory", cfg.Path, cfg.Dir())
+	}
+
+	if _, err := Load(filepath.Join(dir, "missing.yaml"), Options{}); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("missing file: err = %v, want fs.ErrNotExist", err)
+	}
+}
+
+func TestComponentErrors(t *testing.T) {
+	tests := []struct{ name, src, want string }{
+		{"name with space", "components:\n  my app:\n    env_file: .env\n    vars: {}\n", `invalid component name "my app"`},
+		{"name with slash", "components:\n  a/b:\n    env_file: .env\n    vars: {}\n", `invalid component name "a/b"`},
+		{"not a mapping", "components:\n  a: x\n", `component "a" must be a mapping`},
+		{"components is a list", "components:\n  - a\n", "components must be a mapping"},
+		{"empty env_file", "components:\n  a:\n    env_file: \"\"\n    vars: {}\n", "env_file must not be empty"},
+		{"vars is a list", "components:\n  a:\n    env_file: .env\n    vars: [A]\n", "vars must be a mapping"},
+		{"mapping value", "components:\n  a:\n    env_file: .env\n    vars:\n      A: {b: 1}\n", "A must be a string, number or boolean, not a mapping"},
+		{"name is a list", "name: [dev]\ncomponents:\n  a:\n    env_file: .env\n    vars: {}\n", "name must be a string, number or boolean, not a list"},
+		{"non-string key", "components:\n  a:\n    env_file: .env\n    vars:\n      ? [A]\n      : x\n", "keys must be strings"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parse(t, tt.src, Options{})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %v\nwant it to contain %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestEmptyVarsAndLookups(t *testing.T) {
+	cfg := mustParse(t, "components:\n  a:\n    env_file: /abs/path/.env\n    vars:\n")
+	c := cfg.Component("a")
+	if len(c.Vars) != 0 {
+		t.Errorf("null vars should parse as no variables, got %d", len(c.Vars))
+	}
+	if got := cfg.EnvFilePath(c); got != filepath.Clean("/abs/path/.env") {
+		t.Errorf("absolute env_file resolved to %q", got)
+	}
+	if cfg.Component("nope") != nil || c.Var("NOPE") != nil {
+		t.Error("lookups of unknown names should return nil")
+	}
+}
+
+func TestDiagnosticPathOutsideWorkingDir(t *testing.T) {
+	// Files outside the working directory are reported by absolute path.
+	path := filepath.Join(t.TempDir(), "envhaul.yaml")
+	_, err := Parse(path, []byte("components: {}\n"), Options{})
+	if err == nil || !strings.Contains(err.Error(), filepath.ToSlash(path)) && !strings.Contains(err.Error(), path) {
+		t.Errorf("error = %v, want it to name %s", err, path)
 	}
 }

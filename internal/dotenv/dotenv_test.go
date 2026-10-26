@@ -137,3 +137,54 @@ func FuzzRoundTrip(f *testing.F) {
 		}
 	})
 }
+
+func TestWriteFileErrors(t *testing.T) {
+	dir := t.TempDir()
+
+	// The parent "directory" is a regular file.
+	blocker := filepath.Join(dir, "not-a-dir")
+	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if changed, err := WriteFile(filepath.Join(blocker, ".env"), []byte("A=1\n")); err == nil || changed {
+		t.Errorf("writing under a file: changed=%v err=%v, want an error", changed, err)
+	}
+
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("permission checks don't apply on Windows or as root")
+	}
+	// A read-only directory: the temp file can't be created, and nothing
+	// partial is left behind.
+	ro := filepath.Join(dir, "ro")
+	if err := os.Mkdir(ro, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(ro, 0o755) })
+	if changed, err := WriteFile(filepath.Join(ro, ".env"), []byte("A=1\n")); err == nil || changed {
+		t.Errorf("writing into a read-only dir: changed=%v err=%v, want an error", changed, err)
+	}
+	if entries, _ := os.ReadDir(ro); len(entries) != 0 {
+		t.Errorf("files left behind after a failed write: %v", entries)
+	}
+}
+
+func TestWriteFileReplacesWithoutChangingOtherFiles(t *testing.T) {
+	dir := t.TempDir()
+	other := filepath.Join(dir, "keep.txt")
+	if err := os.WriteFile(other, []byte("untouched"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, ".env")
+	for _, content := range []string{"A=1\n", "A=2\n"} {
+		if _, err := WriteFile(path, []byte(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if b, _ := os.ReadFile(other); string(b) != "untouched" {
+		t.Errorf("unrelated file changed: %q", b)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 2 {
+		t.Errorf("directory has %d entries, want 2 (no temp files): %v", len(entries), entries)
+	}
+}

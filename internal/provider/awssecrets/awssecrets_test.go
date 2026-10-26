@@ -92,3 +92,52 @@ func TestFetchError(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestClientsFromCache(t *testing.T) {
+	loads := 0
+	cache := awsclient.NewCacheWithLoader(func(_ context.Context, profile, _ string) (aws.Config, error) {
+		loads++
+		if profile == "broken" {
+			return aws.Config{}, errors.New("failed to get shared config profile, broken")
+		}
+		return aws.Config{Region: "us-east-1", Credentials: aws.AnonymousCredentials{}}, nil
+	})
+	clients := ClientsFromCache(cache)
+	ctx := context.Background()
+
+	a1, err := clients(ctx, "dev", "eu-west-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a2, _ := clients(ctx, "dev", "eu-west-1")
+	b, _ := clients(ctx, "dev", "us-east-1")
+	if a1 != a2 {
+		t.Error("the same profile and region should reuse one client")
+	}
+	if a1 == b {
+		t.Error("different regions should get different clients")
+	}
+	if _, ok := a1.(*secretsmanager.Client); !ok {
+		t.Errorf("client type = %T, want *secretsmanager.Client", a1)
+	}
+	if loads != 2 {
+		t.Errorf("loader called %d times, want 2", loads)
+	}
+	if _, err := clients(ctx, "broken", ""); err == nil || !strings.Contains(err.Error(), `profile "broken" not found`) {
+		t.Errorf("err = %v, want the explained loader error", err)
+	}
+}
+
+func TestIdentityAndValidate(t *testing.T) {
+	p := New(Options{})
+	if p.Scheme() != "secret" || p.Description() != "AWS Secrets Manager" {
+		t.Errorf("Scheme/Description = %q/%q", p.Scheme(), p.Description())
+	}
+	tmpl, err := template.Parse("{{secret:team@corp/key@}}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Validate(tmpl.Refs()[0]); err != nil {
+		t.Errorf("Validate: %v", err)
+	}
+}
