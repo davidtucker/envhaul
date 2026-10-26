@@ -4,7 +4,7 @@
     <img alt="envhaul" src=".github/assets/logo-light.svg" width="420">
   </picture>
 </p>
-<p align="center">Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into <code>.env</code> files.</p>
+<p align="center">Haul config and secrets from your secret stores into <code>.env</code> files.</p>
 
 <p align="center">
   <a href="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml/badge.svg"></a>
@@ -17,8 +17,8 @@
 
 ---
 
-envhaul generates the `.env` files for every part of your project from one
-reviewable config file. Plain values live in the config next to references
+**envhaul** (pronounced *E-N-V-haul*) generates the `.env` files for every
+part of your project from one reviewable config file. Plain values live in the config next to references
 to your secret stores (**AWS SSM Parameter Store and Secrets Manager,
 HashiCorp Vault and OpenBao, 1Password, Google Cloud Secret Manager and
 Azure Key Vault**), which envhaul resolves with the sign-ins you already

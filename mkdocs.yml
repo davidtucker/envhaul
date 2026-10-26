@@ -1,5 +1,5 @@
 site_name: envhaul
-site_description: Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into .env files.
+site_description: Haul config and secrets from your secret stores into .env files.
 site_url: https://davidtucker.github.io/envhaul/
 repo_url: https://github.com/davidtucker/envhaul
 repo_name: davidtucker/envhaul

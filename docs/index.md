@@ -7,11 +7,11 @@ hide:
 ![envhaul](assets/brand/logo-light.svg){ .logo-light }
 ![envhaul](assets/brand/logo-dark.svg){ .logo-dark }
 
-<p class="envhaul-tagline">Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into <code>.env</code> files.</p>
+<p class="envhaul-tagline">Haul config and secrets from your secret stores into <code>.env</code> files.</p>
 </div>
 
-envhaul generates the `.env` files for every part of your project from one
-config file. Plain values sit in the config next to references to your
+**envhaul** (pronounced *E-N-V-haul*) generates the `.env` files for every
+part of your project from one config file. Plain values sit in the config next to references to your
 secret stores: AWS SSM Parameter Store and Secrets Manager, HashiCorp Vault
 and OpenBao, 1Password, Google Cloud Secret Manager and Azure Key Vault.
 envhaul resolves them with the sign-ins you already have, such as your named
