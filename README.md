@@ -4,7 +4,7 @@
     <img alt="envhaul" src=".github/assets/logo-light.svg" width="420">
   </picture>
 </p>
-<p align="center">Haul config and secrets from your secret stores into <code>.env</code> files.</p>
+<p align="center">Haul config and secrets from your vaults into <code>.env</code> files.</p>
 
 <p align="center">
   <a href="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml/badge.svg"></a>
