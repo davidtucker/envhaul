@@ -90,3 +90,25 @@ jobs:
           provenance="envhaul_${TAG#v}.intoto.jsonl"
           cp "$BUNDLE" "$provenance"
           gh release upload "$TAG" "$provenance" --clobber --repo "$GITHUB_REPOSITORY"
+      # Ask the Go module proxy for the new version so `go install ...@latest`
+      # sees it right away and pkg.go.dev indexes it (it learns about versions
+      # from the proxy). The release is already published by this point, so a
+      # proxy hiccup is reported without failing the release.
+      - name: Publish the version to proxy.golang.org and pkg.go.dev
+        continue-on-error: true
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          GOPROXY: https://proxy.golang.org
+          GOFLAGS: -mod=mod
+        run: |
+          module=$(go list -m)
+          for attempt in 1 2 3 4 5 6; do
+            if go list -m "$module@$TAG"; then
+              echo "Requested $module@$TAG; pkg.go.dev: https://pkg.go.dev/$module@$TAG"
+              exit 0
+            fi
+            echo "Attempt $attempt failed; retrying in 20s"
+            sleep 20
+          done
+          echo "::warning::proxy.golang.org did not return $module@$TAG; run 'GOPROXY=https://proxy.golang.org go list -m $module@$TAG' later"
+          exit 1

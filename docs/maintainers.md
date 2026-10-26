@@ -12,6 +12,9 @@
    skipped while their tokens aren't configured.
 4. Check the release page. Verify one artifact with the commands in
    [Security](security.md#verifying-releases).
+5. The last release step requests the new version from `proxy.golang.org`,
+   so `go install …@latest` and [pkg.go.dev](https://pkg.go.dev/github.com/davidtucker/envhaul)
+   pick it up within minutes.
 
 Stable releases come only from merging the release PR. Pushing a stable tag
 (`vX.Y.Z`) yourself does nothing, so release-please's tag and its workflow
@@ -102,7 +105,10 @@ These settings live in GitHub, not in the repository.
 - [ ] Create fine-grained tokens with *Contents: read and write* on each, and
       add them as the `HOMEBREW_TAP_TOKEN` and `SCOOP_BUCKET_TOKEN` Actions
       secrets.
-- [ ] Optional: add `CODECOV_TOKEN` after enabling the repository on Codecov.
+- [ ] Sign in at [codecov.io](https://codecov.io) with GitHub and enable
+      `davidtucker/envhaul`. Uploads authenticate with GitHub OIDC, so no
+      `CODECOV_TOKEN` is needed. The `Coverage` check isn't required, so a
+      Codecov problem never blocks merges.
 
 **Settings → General**
 

@@ -10,7 +10,6 @@
   <a href="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/davidtucker/envhaul/releases"><img alt="Release" src="https://img.shields.io/github/v/release/davidtucker/envhaul?sort=semver"></a>
   <a href="https://pkg.go.dev/github.com/davidtucker/envhaul"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/davidtucker/envhaul.svg"></a>
-  <a href="https://goreportcard.com/report/github.com/davidtucker/envhaul"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/davidtucker/envhaul"></a>
   <a href="https://codecov.io/gh/davidtucker/envhaul"><img alt="Coverage" src="https://codecov.io/gh/davidtucker/envhaul/graph/badge.svg"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/davidtucker/envhaul"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/davidtucker/envhaul/badge"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
