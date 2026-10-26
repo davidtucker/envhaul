@@ -68,16 +68,63 @@ wrote  web/.env           (2 vars)
 
 ## Install
 
+### macOS and Linux: Homebrew
+
 ```sh
-brew install davidtucker/tap/envhaul                       # macOS, Linux
-scoop bucket add davidtucker https://github.com/davidtucker/scoop-bucket && scoop install envhaul  # Windows
-go install github.com/davidtucker/envhaul/cmd/envhaul@latest
-curl -fsSL https://raw.githubusercontent.com/davidtucker/envhaul/main/install.sh | sh   # verifies checksums and signatures
-docker run --rm ghcr.io/davidtucker/envhaul --help
+brew install davidtucker/tap/envhaul
 ```
 
-deb, rpm and apk packages and archives for every platform are on the
-[releases page](https://github.com/davidtucker/envhaul/releases).
+### Windows: Scoop
+
+```powershell
+scoop bucket add davidtucker https://github.com/davidtucker/scoop-bucket
+scoop install envhaul
+```
+
+### Linux: deb, rpm or apk package
+
+Download the package for your distribution and architecture from the
+[latest release](https://github.com/davidtucker/envhaul/releases/latest), then:
+
+```sh
+sudo dpkg -i envhaul_*_amd64.deb                     # Debian, Ubuntu
+sudo rpm -i envhaul-*.x86_64.rpm                     # Fedora, RHEL
+sudo apk add --allow-untrusted envhaul_*_x86_64.apk  # Alpine
+```
+
+### macOS and Linux: install script
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/davidtucker/envhaul/main/install.sh | sh
+```
+
+Installs the latest release to `/usr/local/bin` (or `~/.local/bin`) after
+verifying its checksum, and its signature too if
+[cosign](https://docs.sigstore.dev/cosign/system_config/installation/) is
+installed.
+
+### Any platform: Go
+
+```sh
+go install github.com/davidtucker/envhaul/cmd/envhaul@latest
+```
+
+Requires Go 1.26 or newer.
+
+### Docker
+
+```sh
+docker run --rm -v "$PWD:/work" -w /work \
+  -v "$HOME/.aws:/home/nonroot/.aws:ro" \
+  ghcr.io/davidtucker/envhaul sync
+```
+
+### Manual download
+
+Archives for every platform are on the
+[releases page](https://github.com/davidtucker/envhaul/releases). Every
+release is signed and has build provenance; see
+[verifying releases](https://davidtucker.github.io/envhaul/security/#verifying-releases).
 
 ## Quick start
 
