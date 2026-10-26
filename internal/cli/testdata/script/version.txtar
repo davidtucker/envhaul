@@ -14,3 +14,8 @@ exists man/envhaul-sync.1
 
 exec envhaul completion bash
 stdout 'bash completion'
+
+exec envhaul gen docs ref
+exists ref/envhaul.md
+exists ref/envhaul_sync.md
+grep 'envhaul sync' ref/envhaul_sync.md

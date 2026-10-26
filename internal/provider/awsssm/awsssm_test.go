@@ -163,3 +163,45 @@ func TestFetchErrors(t *testing.T) {
 		t.Error("offline provider should refuse to fetch")
 	}
 }
+
+func TestClientsFromCache(t *testing.T) {
+	var loads []string
+	cache := awsclient.NewCacheWithLoader(func(_ context.Context, profile, region string) (aws.Config, error) {
+		loads = append(loads, profile+"/"+region)
+		if profile == "broken" {
+			return aws.Config{}, errors.New("failed to get shared config profile, broken")
+		}
+		return aws.Config{Region: "us-east-1", Credentials: aws.AnonymousCredentials{}}, nil
+	})
+	clients := ClientsFromCache(cache)
+	ctx := context.Background()
+
+	a1, err := clients(ctx, "dev", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a2, _ := clients(ctx, "dev", "")
+	b, _ := clients(ctx, "shared", "")
+	if a1 != a2 {
+		t.Error("the same profile and region should reuse one client")
+	}
+	if a1 == b {
+		t.Error("different profiles should get different clients")
+	}
+	if _, ok := a1.(*ssm.Client); !ok {
+		t.Errorf("client type = %T, want *ssm.Client", a1)
+	}
+	if got := strings.Join(loads, ","); got != "dev/,shared/" {
+		t.Errorf("loads = %s, want one per profile", got)
+	}
+	if _, err := clients(ctx, "broken", ""); err == nil || !strings.Contains(err.Error(), `profile "broken" not found`) {
+		t.Errorf("err = %v, want the explained loader error", err)
+	}
+}
+
+func TestIdentity(t *testing.T) {
+	p := New(Options{})
+	if p.Scheme() != "ssm" || p.Description() != "AWS SSM Parameter Store" {
+		t.Errorf("Scheme/Description = %q/%q", p.Scheme(), p.Description())
+	}
+}

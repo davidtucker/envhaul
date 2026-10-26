@@ -1,10 +1,16 @@
 package providers
 
 import (
+	"context"
+	"errors"
+	"strings"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/davidtucker/envhaul/internal/awsclient"
 	"github.com/davidtucker/envhaul/internal/config"
+	"github.com/davidtucker/envhaul/internal/provider"
 )
 
 func TestAWSSettings(t *testing.T) {
@@ -31,5 +37,32 @@ func TestAWSSettings(t *testing.T) {
 func TestValidatorKnowsBuiltins(t *testing.T) {
 	if got := Validator().Schemes(); len(got) != 2 || got[0] != "secret" || got[1] != "ssm" {
 		t.Errorf("Schemes() = %v", got)
+	}
+}
+
+func TestNewWiresAWSClients(t *testing.T) {
+	var loaded []string
+	cache := awsclient.NewCacheWithLoader(func(_ context.Context, profile, _ string) (aws.Config, error) {
+		loaded = append(loaded, profile)
+		return aws.Config{}, errors.New("stop before any network call")
+	})
+	cfg := &config.Config{AWSProfile: "dev", SSMPrefix: "/app"}
+	reg := New(Options{Config: cfg, AWS: cache})
+
+	for _, scheme := range []string{"ssm", "secret"} {
+		p, _ := reg.Get(scheme)
+		_, err := p.Fetch(context.Background(), []provider.Request{{Path: "/app/x", Profile: "dev"}})
+		if err == nil || !strings.Contains(err.Error(), "stop before any network call") {
+			t.Errorf("%s: Fetch err = %v, want the cache's loader to be used", scheme, err)
+		}
+	}
+	if len(loaded) != 1 || loaded[0] != "dev" {
+		t.Errorf("loader calls = %v, want one shared load for profile dev", loaded)
+	}
+
+	// Without a cache the providers are offline.
+	p, _ := New(Options{Config: cfg}).Get("ssm")
+	if _, err := p.Fetch(context.Background(), nil); err == nil || !strings.Contains(err.Error(), "not configured for remote access") {
+		t.Errorf("offline Fetch err = %v", err)
 	}
 }
