@@ -51,19 +51,39 @@ These settings live in GitHub, not in the repository.
 - [ ] Description: *Haul config and secrets from AWS into .env files.*
       Website: `https://davidtucker.github.io/envhaul`. Topics: `dotenv`,
       `env`, `aws`, `ssm`, `secrets-manager`, `cli`, `go`, `devtools`.
-- [ ] Pull requests: allow **squash merging** only, with the PR title as the
-      default commit message. Enable **auto-merge** and **automatically delete
-      head branches**.
+- [x] Pull requests: allow **squash merging** only, with the **PR title** as
+      the commit title and the commit messages as the body. Enable
+      **auto-merge**, **always suggest updating branches** and
+      **automatically delete head branches**.
 - [ ] Enable **Discussions**.
 
-**Settings → Rules → Rulesets** (for `main`)
+**Settings → Rules → Rulesets**
 
-- [ ] Require a pull request with 1 approval, dismissing stale approvals.
-- [ ] Require status checks: the `Test` jobs, `Lint`, `Fuzz`,
-      `Integration (AWS emulator)`, `Release dry run`, `Analyze (go)` and
-      `conventional`.
-- [ ] Require linear history and block force pushes.
-- [ ] Optional: require signed commits.
+- [x] **`main`** (default branch), with no bypass actors:
+    - Require a pull request: **0 approvals** while there is a single
+      maintainer (GitHub doesn't let you approve your own PR), stale
+      approvals dismissed, conversations resolved, squash merge only.
+      Raise it to 1 when a second maintainer joins.
+    - Require status checks, with the branch up to date:
+      the six `Test (…)` jobs, `Lint`, `Fuzz`, `Integration (AWS emulator)`,
+      `Release dry run`, `Analyze (go)`, `Analyze (actions)`, `govulncheck`
+      and `conventional`.
+    - Block merges on new CodeQL alerts of high severity or above.
+    - Require linear history and signed commits; block force pushes and
+      deletion.
+- [x] **`release tags`** (`refs/tags/v*`): tags can be created (by
+      release-please, or a maintainer pushing an `-rc` tag) but never moved
+      or deleted, so a published version always points at the same code.
+
+To change these, edit them under Settings → Rules → Rulesets, or with
+`gh api repos/davidtucker/envhaul/rulesets`. If you rename a CI job, update
+the required checks in the same change; otherwise PRs wait for a check that
+never reports.
+
+Pull requests opened by `github-actions[bot]` (the release PR) only run
+workflows after a maintainer approves them. Approve the runs on the release
+PR before merging, or give release-please a GitHub App or fine-grained token
+so its PRs run CI automatically.
 
 **Settings → Code security**
 
@@ -75,11 +95,11 @@ These settings live in GitHub, not in the repository.
 
 **Settings → Pages**
 
-- [ ] Source: **GitHub Actions**.
+- [x] Source: **GitHub Actions**.
 
 **Settings → Actions → General**
 
-- [ ] Workflow permissions: **read repository contents** by default, and
+- [x] Workflow permissions: **read repository contents** by default, and
       allow GitHub Actions to create and approve pull requests (needed by
       release-please).
 
