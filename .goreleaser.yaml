@@ -35,13 +35,31 @@ archives:
       - goos: windows
         formats: [zip]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # Reproducible archives: every entry gets the commit's timestamp and
+    # fixed ownership and permissions, instead of whatever the build machine
+    # had (completions and man pages are generated fresh on each run).
+    builds_info:
+      owner: root
+      group: root
+      mode: 0755
+      mtime: "{{ .CommitDate }}"
     files:
-      - LICENSE
-      - NOTICE
-      - README.md
-      - CHANGELOG.md
-      - completions/*
-      - manpages/*
+      - src: LICENSE
+        info: &file_info
+          owner: root
+          group: root
+          mode: 0644
+          mtime: "{{ .CommitDate }}"
+      - src: NOTICE
+        info: *file_info
+      - src: README.md
+        info: *file_info
+      - src: CHANGELOG.md
+        info: *file_info
+      - src: completions/*
+        info: *file_info
+      - src: manpages/*
+        info: *file_info
 
 checksum:
   name_template: checksums.txt
@@ -109,22 +127,27 @@ nfpms:
     formats: [deb, rpm, apk]
     bindir: /usr/bin
     section: utils
+    mtime: "{{ .CommitDate }}"
+    # RPM records the build machine's hostname, which differs on every CI
+    # runner; pin it so RPMs are reproducible too.
+    rpm:
+      buildhost: envhaul-release
     contents:
       - src: ./completions/envhaul.bash
         dst: /usr/share/bash-completion/completions/envhaul
-        file_info: { mode: 0644 }
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
       - src: ./completions/envhaul.zsh
         dst: /usr/share/zsh/vendor-completions/_envhaul
-        file_info: { mode: 0644 }
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
       - src: ./completions/envhaul.fish
         dst: /usr/share/fish/vendor_completions.d/envhaul.fish
-        file_info: { mode: 0644 }
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
       - src: ./manpages/*.1.gz
         dst: /usr/share/man/man1/
-        file_info: { mode: 0644 }
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
       - src: ./LICENSE
         dst: /usr/share/doc/envhaul/LICENSE
-        file_info: { mode: 0644 }
+        file_info: { mode: 0644, mtime: "{{ .CommitDate }}" }
 
 homebrew_casks:
   - name: envhaul
@@ -153,14 +176,16 @@ homebrew_casks:
     # Skipped when HOMEBREW_TAP_TOKEN isn't configured; pre-releases are
     # never published to the tap.
     skip_upload: '{{ if isEnvSet "HOMEBREW_TAP_TOKEN" }}auto{{ else }}true{{ end }}'
-    hooks:
-      post:
-        # The binaries are signed via cosign, not Apple notarization; drop
-        # the quarantine flag Homebrew adds on download.
-        install_steps: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/envhaul"]
-          end
+    # The binaries are signed with cosign, not Apple notarization, so drop
+    # the quarantine flag Homebrew adds on download. This is a custom block
+    # because GoReleaser's hooks.post.install_steps emits `postflight_steps`,
+    # which Homebrew doesn't recognize (it skips the hook with an error).
+    custom_block: |
+      postflight do
+        if OS.mac?
+          system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/envhaul"]
+        end
+      end
 
 scoops:
   - name: envhaul

@@ -60,6 +60,15 @@ cosign verify ghcr.io/davidtucker/envhaul:latest \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
+### Reproducible builds
+
+Release archives and Linux packages are reproducible. Binaries are built with
+`-trimpath` and the commit's timestamp, and every file in an archive or
+package gets the commit's timestamp, fixed ownership and fixed permissions.
+Rebuilding a tag with the same Go version (shown by `envhaul version`) and
+GoReleaser version produces byte-identical files, which you can compare with
+the published `checksums.txt`.
+
 ## Reporting vulnerabilities
 
 See [SECURITY.md](https://github.com/davidtucker/envhaul/blob/main/SECURITY.md).
