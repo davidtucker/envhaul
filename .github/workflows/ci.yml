@@ -36,6 +36,8 @@ jobs:
       - name: Build
         run: go build ./...
       - name: Test
+        # bash on every OS: PowerShell would split -coverprofile=coverage.out at the dot.
+        shell: bash
         run: go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.go == 'stable'

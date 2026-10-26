@@ -14,7 +14,10 @@ on:
         required: true
         type: string
 
-permissions: read-all
+# Not read-all: as a reusable workflow, every scope requested here must be
+# granted by the caller (release-please.yml).
+permissions:
+  contents: read
 
 concurrency:
   group: release-${{ inputs.tag || github.ref_name }}

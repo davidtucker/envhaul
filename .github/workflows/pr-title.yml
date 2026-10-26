@@ -31,6 +31,3 @@ jobs:
             build
             ci
             chore
-          subjectPattern: ^(?![A-Z]).+$
-          subjectPatternError: |
-            The subject "{subject}" should start with a lowercase letter, e.g. "feat: add vault provider".
