@@ -258,12 +258,16 @@ func TestComponentErrors(t *testing.T) {
 }
 
 func TestEmptyVarsAndLookups(t *testing.T) {
-	cfg := mustParse(t, "components:\n  a:\n    env_file: /abs/path/.env\n    vars:\n")
+	// An absolute env_file is used as-is rather than joined onto the config
+	// directory. t.TempDir is absolute on every OS (a path like /abs/x has
+	// no drive letter, so it isn't absolute on Windows).
+	abs := filepath.Join(t.TempDir(), "elsewhere", ".env")
+	cfg := mustParse(t, "components:\n  a:\n    env_file: \""+filepath.ToSlash(abs)+"\"\n    vars:\n")
 	c := cfg.Component("a")
 	if len(c.Vars) != 0 {
 		t.Errorf("null vars should parse as no variables, got %d", len(c.Vars))
 	}
-	if got := cfg.EnvFilePath(c); got != filepath.Clean("/abs/path/.env") {
+	if got := cfg.EnvFilePath(c); got != abs {
 		t.Errorf("absolute env_file resolved to %q", got)
 	}
 	if cfg.Component("nope") != nil || c.Var("NOPE") != nil {
