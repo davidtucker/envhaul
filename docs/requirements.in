@@ -1,0 +1,3 @@
+# Docs site dependencies. Edit this file, then regenerate the hash-pinned
+# requirements.txt (see its header). Dependabot keeps both up to date.
+mkdocs-material==9.8.0
