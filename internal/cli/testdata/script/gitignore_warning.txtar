@@ -1,0 +1,19 @@
+[!exec:git] skip 'git not installed'
+exec git init -q
+exec envhaul sync
+stderr 'warning: .env is not ignored by git'
+exec envhaul validate
+stderr 'warning: .env \(component app\) is not ignored by git'
+
+cp ignore .gitignore
+exec envhaul sync
+! stderr 'not ignored'
+
+-- envhaul.yaml --
+components:
+  app:
+    env_file: .env
+    vars:
+      A: x
+-- ignore --
+.env

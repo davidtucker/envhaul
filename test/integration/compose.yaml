@@ -1,0 +1,7 @@
+# AWS emulator for integration tests: `make emulator-up`, then
+# `make test-integration`. moto serves SSM and Secrets Manager on one port.
+services:
+  moto:
+    image: motoserver/moto:5.2.3
+    ports:
+      - "127.0.0.1:5000:5000"

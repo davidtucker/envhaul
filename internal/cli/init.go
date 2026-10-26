@@ -1,0 +1,176 @@
+package cli
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/davidtucker/envhaul/internal/brand"
+	"github.com/davidtucker/envhaul/internal/config"
+)
+
+// SchemaURL is where editors can fetch the config JSON Schema.
+const SchemaURL = "https://raw.githubusercontent.com/davidtucker/envhaul/main/schema/envhaul.schema.json"
+
+const starterConfig = `# yaml-language-server: $schema=` + SchemaURL + `
+#
+# envhaul configuration: https://github.com/davidtucker/envhaul
+#
+# Values are either inline (committed to version control) or references that
+# are resolved when you run ` + "`envhaul sync`" + `:
+#
+#   {{ssm:path}}              SSM Parameter Store (relative paths use ssm_prefix)
+#   {{ssm:/absolute/path}}    SSM, ignoring ssm_prefix
+#   {{secret:id}}             Secrets Manager, whole secret
+#   {{secret:id#key}}         Secrets Manager, one key of a JSON secret
+#   {{ssm:path@profile}}      use another AWS profile (e.g. another account)
+#   {{ssm:path|trim|default:x}}  pipes: urlencode base64 base64decode trim lower upper default:x
+#
+# References can be embedded in strings:
+#   DATABASE_URL: "postgresql://{{secret:db#user}}:{{secret:db#pass|urlencode}}@localhost/app"
+
+version: 1
+name: %s
+aws_profile: %s
+aws_region: %s
+ssm_prefix: /%s/%s
+
+components:
+  app:
+    env_file: .env
+    vars:
+      APP_ENV: %s
+      # API_KEY: "{{ssm:api/API_KEY}}"
+      # DATABASE_PASSWORD: "{{secret:%s/%s/db#password}}"
+`
+
+func (a *app) initCmd() *cobra.Command {
+	var force, yes, noGitignore bool
+	var name, profile, region, project string
+	cmd := &cobra.Command{
+		Use:   "init",
+		Short: "Create a starter envhaul.yaml",
+		Long: `Write a commented starter config to envhaul.yaml (or the path given with
+--config) and offer to add the generated env files to .gitignore.`,
+		Example: `  envhaul init
+  envhaul init --project shop --profile shop-dev --region eu-west-1 --yes`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			path := a.globals.ConfigPath
+			if path == "" {
+				path = config.FileNames[0]
+			}
+			if _, err := os.Stat(path); err == nil && !force {
+				return fmt.Errorf("%s already exists (use --force to overwrite)", path)
+			}
+			if project == "" {
+				wd, _ := os.Getwd()
+				project = sanitizeName(filepath.Base(wd))
+			}
+			if profile == "" {
+				profile = "default"
+			}
+			content := fmt.Sprintf(starterConfig, name, profile, region, project, name, name, project, name)
+			if err := os.WriteFile(path, []byte(content), 0o644); err != nil { //nolint:gosec // committed, non-secret file
+				return err
+			}
+			out := a.opts.Stdout
+			if a.opts.IsTerminal(out) {
+				fmt.Fprint(out, brand.Small(a.style(out)))
+				fmt.Fprintln(out)
+			}
+			fmt.Fprintf(out, "%s %s\n", a.paint(out, "32", "created"), path)
+
+			if !noGitignore {
+				if err := a.offerGitignore(filepath.Dir(path), []string{".env"}, yes); err != nil {
+					return err
+				}
+			}
+			fmt.Fprintf(out, "\nNext: edit %s, then run `envhaul validate` and `envhaul sync`.\n", path)
+			return nil
+		},
+	}
+	f := cmd.Flags()
+	f.BoolVar(&force, "force", false, "overwrite an existing config file")
+	f.BoolVarP(&yes, "yes", "y", false, "add env files to .gitignore without asking")
+	f.BoolVar(&noGitignore, "no-gitignore", false, "do not touch .gitignore")
+	f.StringVar(&name, "name", "dev", "environment name")
+	f.StringVar(&project, "project", "", "project name used in example paths (default: current directory name)")
+	f.StringVar(&profile, "profile", "", "AWS profile (default \"default\")")
+	f.StringVar(&region, "region", "us-east-1", "AWS region")
+	// --profile and --region are also global flags; the local ones shadow
+	// them here so `init --profile x` fills in the template.
+	return cmd
+}
+
+func (a *app) offerGitignore(dir string, entries []string, yes bool) error {
+	path := filepath.Join(dir, ".gitignore")
+	existing, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	have := map[string]bool{}
+	for _, line := range strings.Split(string(existing), "\n") {
+		have[strings.TrimSpace(line)] = true
+	}
+	var add []string
+	for _, e := range entries {
+		if !have[e] && !have["/"+e] {
+			add = append(add, e)
+		}
+	}
+	if len(add) == 0 {
+		return nil
+	}
+
+	if !yes {
+		if !a.opts.IsTerminal(a.opts.Stdin) {
+			fmt.Fprintf(a.opts.Stdout, "Remember to add %s to .gitignore (or rerun with --yes).\n", strings.Join(add, ", "))
+			return nil
+		}
+		fmt.Fprintf(a.opts.Stdout, "Add %s to %s? [Y/n] ", strings.Join(add, ", "), relPath(path))
+		answer, _ := bufio.NewReader(a.opts.Stdin).ReadString('\n')
+		answer = strings.ToLower(strings.TrimSpace(answer))
+		if answer != "" && answer != "y" && answer != "yes" {
+			return nil
+		}
+	}
+
+	var b strings.Builder
+	b.Write(existing)
+	if len(existing) > 0 && !strings.HasSuffix(string(existing), "\n") {
+		b.WriteByte('\n')
+	}
+	b.WriteString("\n# Generated by envhaul; contains secrets\n")
+	for _, e := range add {
+		b.WriteString(e + "\n")
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil { //nolint:gosec // committed, non-secret file
+		return err
+	}
+	fmt.Fprintf(a.opts.Stdout, "%s %s\n", a.paint(a.opts.Stdout, "32", "updated"), relPath(path))
+	return nil
+}
+
+func sanitizeName(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('-')
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	if out == "" {
+		return "myapp"
+	}
+	return out
+}

@@ -1,0 +1,26 @@
+exec envhaul get app KEY
+stdout '^v-123$'
+
+exec envhaul get app URL -n
+stdout '^https://v-123\.example\z'
+
+# get is strict: a missing value is an error.
+! exec envhaul get app MISSING
+stderr 'app.MISSING: ssm:/missing not found'
+
+! exec envhaul get app NOPE
+stderr 'component "app" has no variable "NOPE" \(available: KEY, URL, MISSING\)'
+
+! exec envhaul get nope KEY
+stderr 'unknown component "nope"'
+
+-- envhaul.yaml --
+components:
+  app:
+    env_file: .env
+    vars:
+      KEY: "{{ssm:/key}}"
+      URL: "https://{{ssm:/key}}.example"
+      MISSING: "{{ssm:/missing}}"
+-- fake-aws.json --
+{"ssm": {"default|/key": "v-123"}}

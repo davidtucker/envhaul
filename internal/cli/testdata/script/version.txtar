@@ -1,0 +1,16 @@
+exec envhaul version
+stdout '^envhaul dev$'
+stdout 'platform: '
+
+exec envhaul version --json
+stdout '"version": "dev"'
+
+exec envhaul --version
+stdout '^envhaul dev$'
+
+exec envhaul gen man man
+exists man/envhaul.1
+exists man/envhaul-sync.1
+
+exec envhaul completion bash
+stdout 'bash completion'

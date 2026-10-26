@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.txtar text eol=lf
+internal/brand/*.txt text eol=lf
+.github/assets/*.txt text eol=lf

@@ -1,0 +1,14 @@
+! exec envhaul sync
+stderr 'ssm: reading /key: '
+stderr 'token is broken'
+! exists .env
+
+-- envhaul.yaml --
+aws_profile: broken
+components:
+  app:
+    env_file: .env
+    vars:
+      KEY: "{{ssm:/key}}"
+-- fake-aws.json --
+{"errors": {"broken": "token is broken"}}

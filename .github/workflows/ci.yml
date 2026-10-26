@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: [oldstable, stable]
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.go == 'stable'
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+      - name: Check go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+      - name: Check generated assets are in sync
+        run: go test -run 'TestBannersMatchAssets|TestSchemaInSync' ./internal/brand ./internal/config
+
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Fuzz template parser and dotenv round trip
+        run: make fuzz FUZZTIME=30s
+
+  integration:
+    name: Integration (AWS emulator)
+    runs-on: ubuntu-latest
+    services:
+      moto:
+        image: motoserver/moto:5.2.3
+        ports:
+          - 5000:5000
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Integration tests
+        env:
+          AWS_EMULATOR_ENDPOINT: http://127.0.0.1:5000
+        run: go test -tags integration -count=1 -v ./test/integration
+
+  release-dry-run:
+    name: Release dry run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: v2.19.0
+          args: check
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: v2.19.0
+          args: release --snapshot --clean --skip=sign,sbom,docker,publish
+      - name: Smoke test the built binary
+        run: |
+          bin=$(find dist -path '*linux_amd64*' -name envhaul -type f | head -1)
+          "$bin" version
+          "$bin" -c examples/envhaul.yaml validate
+          tar -tzf dist/envhaul_*_linux_amd64.tar.gz | grep -q 'manpages/envhaul.1.gz'
+          tar -tzf dist/envhaul_*_linux_amd64.tar.gz | grep -q 'completions/envhaul.zsh'

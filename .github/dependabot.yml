@@ -1,0 +1,69 @@
+# Dependency updates. Commit prefixes follow Conventional Commits so
+# release-please can classify them:
+#   fix(deps)  runtime Go modules and the release image: shipped to users, so they cut a patch release
+#   ci(deps)   GitHub Actions: not user-facing, hidden from the changelog
+#   test(deps) the test emulator image
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: fix
+      include: scope
+    labels: [dependencies, go]
+    groups:
+      aws-sdk:
+        patterns:
+          - github.com/aws/*
+      go-minor-patch:
+        update-types: [minor, patch]
+        exclude-patterns:
+          - github.com/aws/*
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+      include: scope
+    labels: [dependencies, github-actions]
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: fix
+      include: scope
+    labels: [dependencies, docker]
+
+  - package-ecosystem: docker-compose
+    directory: /test/integration
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: test
+      include: scope
+    labels: [dependencies, docker]
+
+  - package-ecosystem: pip
+    directory: /docs
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: docs
+      include: scope
+    labels: [dependencies, docs]
+    groups:
+      docs:
+        patterns: ["*"]

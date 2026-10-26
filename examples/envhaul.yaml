@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidtucker/envhaul/main/schema/envhaul.schema.json
+#
+# Example envhaul configuration for a project with an API, a web frontend and
+# infrastructure code. Each component becomes one .env file.
+#
+#   envhaul -c examples/envhaul.yaml validate   # check this file (offline)
+#   envhaul -c examples/envhaul.yaml list       # show where every value comes from
+#   envhaul -c examples/envhaul.yaml sync       # fetch values and write the .env files
+
+version: 1
+name: dev
+description: Local development environment
+aws_profile: acme-dev        # default profile for references without @profile
+aws_region: us-east-1
+ssm_prefix: /acme/dev        # relative SSM paths resolve under this prefix
+
+components:
+  api:
+    description: Backend API
+    env_file: services/api/.env
+    vars:
+      # Inline values live in version control.
+      APP_ENV: development
+      LOG_LEVEL: debug
+      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      CACHE_TTL_SECONDS: "300"
+
+      # SSM Parameter Store. "api/STRIPE_KEY" resolves to /acme/dev/api/STRIPE_KEY.
+      STRIPE_SECRET_KEY: "{{ssm:api/STRIPE_SECRET_KEY}}"
+
+      # Another AWS account: shared third-party keys live in acme-shared.
+      OPENAI_API_KEY: "{{ssm:api/OPENAI_API_KEY@acme-shared}}"
+      SENTRY_DSN: "{{ssm:api/SENTRY_DSN@acme-shared}}"
+
+      # Secrets Manager: pick keys from a JSON secret and URL-encode the password.
+      DATABASE_URL: "postgresql://{{secret:acme/dev/db#username}}:{{secret:acme/dev/db#password|urlencode}}@localhost:5432/acme"
+
+      # Optional values: fall back when the parameter does not exist.
+      FEATURE_FLAGS: "{{ssm:api/FEATURE_FLAGS|default:none}}"
+
+  web:
+    description: Vite frontend
+    env_file: web/.env
+    vars:
+      VITE_API_BASE_URL: "http://localhost:8000"
+      VITE_SENTRY_DSN: "{{ssm:api/SENTRY_DSN@acme-shared}}"   # fetched once, used twice
+
+  infrastructure:
+    description: CDK app
+    env_file: infrastructure/.env
+    vars:
+      DEPLOY_ENV: dev
+      AWS_REGION: us-east-1
+      # Absolute paths ignore ssm_prefix.
+      HOSTED_ZONE_ID: "{{ssm:/acme/global/route53/HOSTED_ZONE_ID}}"
+      GITHUB_TOKEN: "{{secret:acme/ci/github#token|trim}}"

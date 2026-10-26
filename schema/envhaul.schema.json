@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/davidtucker/envhaul/main/schema/envhaul.schema.json",
+  "title": "envhaul configuration",
+  "description": "Defines the .env files envhaul generates and where each value comes from. See https://davidtucker.github.io/envhaul/config/",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["components"],
+  "properties": {
+    "version": {
+      "description": "Config schema version. Defaults to 1.",
+      "type": "integer",
+      "enum": [1]
+    },
+    "name": {
+      "description": "Environment name, e.g. dev or staging. Shown in generated file headers.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Free-form description of this environment.",
+      "type": "string"
+    },
+    "aws_profile": {
+      "description": "Default AWS profile for references without @profile. Overridden by --profile.",
+      "type": "string"
+    },
+    "aws_region": {
+      "description": "AWS region for every request. Overridden by --region. When unset, each profile's own region is used.",
+      "type": "string"
+    },
+    "ssm_prefix": {
+      "description": "Prefix joined onto SSM paths that do not start with /. Must start with /.",
+      "type": "string",
+      "pattern": "^/"
+    },
+    "secret_prefix": {
+      "description": "Prefix prepended to Secrets Manager ids that are not ARNs.",
+      "type": "string"
+    },
+    "components": {
+      "description": "Each component produces one env file.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[^\\s/\\\\]+$" },
+      "additionalProperties": { "$ref": "#/$defs/component" }
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["env_file", "vars"],
+      "properties": {
+        "description": {
+          "description": "Free-form description, shown in shell completion.",
+          "type": "string"
+        },
+        "env_file": {
+          "description": "Path of the generated file, relative to this config file.",
+          "type": "string",
+          "minLength": 1
+        },
+        "vars": {
+          "description": "Variables in output order. Values are inline text or templates with {{scheme:path[#key][@profile][|fn[:arg]]}} references.",
+          "type": ["object", "null"],
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null"],
+            "examples": [
+              "{{ssm:api/API_KEY}}",
+              "{{ssm:/absolute/path@other-profile}}",
+              "{{secret:db#password|urlencode}}",
+              "{{ssm:optional|default:fallback}}"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

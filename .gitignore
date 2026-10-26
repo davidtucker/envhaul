@@ -1,0 +1,30 @@
+# Build output
+/dist/
+/bin/
+/envhaul
+*.exe
+coverage.out
+coverage.html
+
+# Generated docs (built in CI)
+/site/
+/docs/reference/cli/
+/completions/
+/manpages/
+
+# Generated env files and local configs
+.env
+.env.*
+!.env.example
+/env-sample.config
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Local tooling
+/.venv/
+.claude/settings.local.json
+.claude/launch.json

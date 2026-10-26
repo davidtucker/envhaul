@@ -1,0 +1,46 @@
+name: Bug report
+description: Something doesn't work as documented.
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Never paste real secret values**; replace them with placeholders.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you run, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Minimal config
+      description: The smallest envhaul.yaml that reproduces the problem.
+      render: yaml
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Command output, ideally with `--verbose` (verbose logs never include values).
+      render: text
+  - type: textarea
+    id: version
+    attributes:
+      label: envhaul version
+      description: Output of `envhaul version`.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install envhaul?
+      options: [Homebrew, Scoop, go install, deb/rpm/apk, install.sh, Docker image, Built from source]
+  - type: dropdown
+    id: auth
+    attributes:
+      label: AWS authentication
+      description: How the profile gets credentials, if relevant.
+      options: [Not relevant, IAM Identity Center (SSO), assume-role, static keys, credential_process, environment variables, instance/container role]

@@ -1,0 +1,21 @@
+[windows] skip 'uses sh'
+env KEY=from-parent
+env KEEP=kept
+exec envhaul exec app -- sh -c 'echo "$KEY/$KEEP"'
+stdout '^from-config/kept$'
+! exists .env
+
+# The child's exit status is propagated.
+! exec envhaul exec app -- false
+
+! exec envhaul exec app
+stderr 'usage: envhaul exec <component> -- <command>'
+
+-- envhaul.yaml --
+components:
+  app:
+    env_file: .env
+    vars:
+      KEY: "{{ssm:/key}}"
+-- fake-aws.json --
+{"ssm": {"default|/key": "from-config"}}

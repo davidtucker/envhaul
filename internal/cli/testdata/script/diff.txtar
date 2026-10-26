@@ -1,0 +1,37 @@
+# A missing file is reported as new, with values masked.
+exec envhaul diff
+stdout '^.env \(new file\)$'
+stdout '^  \+ API_KEY$'
+! stdout 'secret-1'
+
+# --exit-code reports pending changes for CI.
+! exec envhaul diff --exit-code
+
+exec envhaul sync
+exec envhaul diff --exit-code
+stdout '^.env \(up to date\)$'
+
+# Changed, added and removed keys, masked by default.
+cp changed.env .env
+! exec envhaul diff --exit-code
+stdout '^  ~ API_KEY$'
+stdout '^  \+ PLAIN$'
+stdout '^  - STALE$'
+! stdout 'secret-1'
+
+exec envhaul diff --show-values
+stdout '^  ~ API_KEY: old-value → secret-1$'
+stdout '^  \+ PLAIN=value$'
+
+-- envhaul.yaml --
+components:
+  app:
+    env_file: .env
+    vars:
+      API_KEY: "{{ssm:/key}}"
+      PLAIN: value
+-- fake-aws.json --
+{"ssm": {"default|/key": "secret-1"}}
+-- changed.env --
+API_KEY=old-value
+STALE=1

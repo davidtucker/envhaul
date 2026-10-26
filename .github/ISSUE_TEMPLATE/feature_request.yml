@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an improvement to envhaul.
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you like it to work? Example config or commands help a lot.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

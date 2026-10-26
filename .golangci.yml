@@ -1,0 +1,45 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nilerr
+    - revive
+    - unconvert
+    - unparam
+    - usestdlibvars
+  settings:
+    gosec:
+      excludes:
+        - G301 # 0755 for project directories (env file parents, doc output) is intended
+        - G204 # exec with variable command: `envhaul exec` runs user-supplied commands by design
+        - G304 # file inclusion via variable: reading the config and env files the user names is the job
+    revive:
+      rules:
+        - name: exported
+          disabled: true # internal packages; exported names are documented where it helps
+    misspell:
+      locale: US
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec, errcheck, unparam]
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/davidtucker/envhaul

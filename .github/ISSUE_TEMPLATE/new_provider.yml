@@ -1,0 +1,41 @@
+name: New value source
+description: Propose a new source for {{scheme:...}} references (e.g. Vault, 1Password, GCP).
+labels: [enhancement, provider, triage]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      placeholder: HashiCorp Vault KV v2
+    validations:
+      required: true
+  - type: input
+    id: scheme
+    attributes:
+      label: Proposed scheme
+      placeholder: "vault"
+  - type: textarea
+    id: syntax
+    attributes:
+      label: Reference syntax
+      description: What would references look like? What do path, #key and @profile mean for this source?
+      placeholder: |
+        {{vault:secret/data/app#password@prod}}
+    validations:
+      required: true
+  - type: textarea
+    id: auth
+    attributes:
+      label: Authentication
+      description: How should envhaul authenticate (CLI login, env vars, config files)?
+  - type: textarea
+    id: batching
+    attributes:
+      label: API and batching
+      description: Which API calls would be used? Can multiple values be fetched in one call?
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I'm willing to implement this

@@ -1,0 +1,26 @@
+exec envhaul init --yes --project shop --profile shop-dev
+stdout 'created envhaul.yaml'
+stdout 'updated .gitignore'
+grep 'aws_profile: shop-dev' envhaul.yaml
+grep 'ssm_prefix: /shop/dev' envhaul.yaml
+grep '^\.env$' .gitignore
+grep '^node_modules$' .gitignore
+
+exec envhaul validate
+stdout 'is valid'
+
+! exec envhaul init
+stderr 'envhaul.yaml already exists'
+
+# Re-running with --force does not duplicate .gitignore entries.
+exec envhaul init --force --yes
+! stdout 'updated .gitignore'
+
+# Without a terminal or --yes, .gitignore is left alone.
+rm .gitignore
+exec envhaul init --force
+stdout 'Remember to add .env to .gitignore'
+! exists .gitignore
+
+-- .gitignore --
+node_modules

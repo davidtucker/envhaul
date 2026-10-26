@@ -1,0 +1,39 @@
+exec envhaul validate
+stdout '^ok: envhaul.yaml is valid: 1 component, 2 variables, 1 reference$'
+
+# Every problem is reported with file:line:column.
+! exec envhaul -c bad.yaml validate
+stderr '^bad.yaml:1:1: unknown key "nmae"'
+stderr '^bad.yaml:6:7: invalid variable name "1BAD"'
+stderr '^bad.yaml:7:13: unknown source "vault" in \{\{vault:x\}\} \(available: secret, ssm\)'
+stderr '^bad.yaml:8:14: unknown pipe function "nope"'
+stderr '^bad.yaml:9:13: unterminated reference'
+stderr 'invalid: 5 problems'
+
+# Commands that need the config report the same problems.
+! exec envhaul -c bad.yaml list
+stderr 'invalid config:'
+
+# No config anywhere.
+mkdir empty/.git
+cd empty
+! exec envhaul validate
+stderr 'no envhaul config file found'
+
+-- envhaul.yaml --
+components:
+  app:
+    env_file: .env
+    vars:
+      A: x
+      B: "{{ssm:/b}}"
+-- bad.yaml --
+nmae: typo
+components:
+  app:
+    env_file: .env
+    vars:
+      1BAD: x
+      SRC: "{{vault:x}}"
+      PIPE: "{{ssm:x|nope}}"
+      UNT: "{{ssm:x"

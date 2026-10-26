@@ -1,0 +1,28 @@
+# The config is found by searching parent directories up to the repo root,
+# and env_file paths are relative to the config file, not the cwd.
+mkdir .git
+mkdir sub/deeper
+cd sub/deeper
+exec envhaul sync
+exists $WORK/.env
+! exists .env
+
+# ENVHAUL_CONFIG and --config take precedence over discovery.
+env ENVHAUL_CONFIG=$WORK/alt.yaml
+exec envhaul list
+stdout 'ALT'
+exec envhaul -c $WORK/envhaul.yaml list
+stdout 'MAIN'
+
+-- envhaul.yaml --
+components:
+  app:
+    env_file: .env
+    vars:
+      MAIN: x
+-- alt.yaml --
+components:
+  app:
+    env_file: alt.env
+    vars:
+      ALT: x

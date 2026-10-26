@@ -1,0 +1,58 @@
+/* envhaul brand colors (see .github/assets/BRAND.md). */
+:root {
+  --envhaul-amber-300: #fcd34d;
+  --envhaul-amber-400: #fbbf24;
+  --envhaul-amber-500: #f59e0b;
+  --envhaul-amber-600: #d97706;
+  --envhaul-amber-700: #b45309;
+  --envhaul-slate-800: #1e293b;
+  --envhaul-slate-900: #0f172a;
+  --envhaul-slate-950: #0b1120;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--envhaul-slate-900);
+  --md-primary-fg-color--light: var(--envhaul-slate-800);
+  --md-primary-fg-color--dark: var(--envhaul-slate-950);
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: var(--envhaul-amber-600);
+  --md-typeset-a-color: var(--envhaul-amber-700);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 222;
+  --md-default-bg-color: var(--envhaul-slate-950);
+  --md-primary-fg-color: var(--envhaul-slate-900);
+  --md-primary-fg-color--light: var(--envhaul-slate-800);
+  --md-primary-fg-color--dark: var(--envhaul-slate-950);
+  --md-accent-fg-color: var(--envhaul-amber-400);
+  --md-typeset-a-color: var(--envhaul-amber-400);
+}
+
+.md-header,
+.md-tabs {
+  background-color: var(--envhaul-slate-900);
+}
+
+.md-typeset .envhaul-hero {
+  text-align: center;
+  margin: 1rem 0 2rem;
+}
+
+.md-typeset .envhaul-hero img {
+  width: min(420px, 90%);
+}
+
+.md-typeset .envhaul-hero .logo-dark,
+[data-md-color-scheme="slate"] .md-typeset .envhaul-hero .logo-light {
+  display: none;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .envhaul-hero .logo-dark {
+  display: inline;
+}
+
+.md-typeset .envhaul-tagline {
+  font-size: 1.2rem;
+  color: var(--md-default-fg-color--light);
+}

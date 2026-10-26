@@ -1,0 +1,38 @@
+exec envhaul list
+cmp stdout want.txt
+
+exec envhaul --profile override list app
+stdout 'ssm:/p/rel@override'
+stdout 'ssm:/abs@other'
+
+# An explicitly empty --profile ignores aws_profile (SDK default chain).
+exec envhaul --profile '' list app
+stdout 'REL +ssm:/p/rel$'
+stdout 'ssm:/abs@other'
+
+exec envhaul list --json app
+stdout '"kind": "template"'
+stdout '"pipes": \['
+
+-- envhaul.yaml --
+aws_profile: dev
+ssm_prefix: /p
+components:
+  app:
+    env_file: .env
+    vars:
+      INLINE: x
+      REL: "{{ssm:rel}}"
+      ABS: "{{ssm:/abs@other}}"
+      MIXED: "a-{{secret:db#user}}-{{ssm:rel|upper}}"
+  other:
+    env_file: other/.env
+    vars:
+      Y: y
+-- want.txt --
+COMPONENT  VAR     SOURCE
+app        INLINE  inline
+app        REL     ssm:/p/rel@dev
+app        ABS     ssm:/abs@other
+app        MIXED   template: secret:db#user@dev, ssm:/p/rel@dev|upper
+other      Y       inline
