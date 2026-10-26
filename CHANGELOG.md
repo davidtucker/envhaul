@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1](https://github.com/davidtucker/envhaul/compare/v0.2.0...v0.2.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **dotenv:** escape $ in double-quoted values ([#25](https://github.com/davidtucker/envhaul/issues/25)) ([adb317d](https://github.com/davidtucker/envhaul/commit/adb317dd276c7d47b8b76cbf968e3fa06acba98a))
+
+
+### Documentation
+
+* change the tagline to "from your vaults" ([#23](https://github.com/davidtucker/envhaul/issues/23)) ([f49d4c5](https://github.com/davidtucker/envhaul/commit/f49d4c5dc5c7a62fb810f11fef8aecd47bdb1621))
+* make home page buttons readable and fill out its table of contents ([#24](https://github.com/davidtucker/envhaul/issues/24)) ([bbc2dd5](https://github.com/davidtucker/envhaul/commit/bbc2dd507d69f0b33bdd1672d1f6696f743e5b49))
+* shorten the tagline and note how to pronounce envhaul ([#21](https://github.com/davidtucker/envhaul/issues/21)) ([1dcb46f](https://github.com/davidtucker/envhaul/commit/1dcb46f62272abe2c845338bbc5fee6d39a05790))
+
 ## [0.2.0](https://github.com/davidtucker/envhaul/compare/v0.1.0...v0.2.0) (2026-10-26)
 
 
