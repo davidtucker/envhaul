@@ -7,7 +7,12 @@
 //   - bare when the value only contains safe characters,
 //   - single quotes when it contains no single quote or newline (contents
 //     are literal everywhere),
-//   - double quotes otherwise, escaping \ " and newlines.
+//   - double quotes otherwise, escaping \ " $ and newlines.
+//
+// The $ escape matters: docker compose, POSIX shells and Vite expand $VAR
+// and ${VAR} inside double quotes, and all of them read \$ as a literal $.
+// python-dotenv and plain node dotenv keep the backslash, so for a value
+// with a $ and a ' or newline they see an extra \ before each $.
 package dotenv
 
 import (
@@ -39,7 +44,7 @@ func Quote(v string) string {
 	case !strings.ContainsAny(v, "'\n\r"):
 		return "'" + v + "'"
 	default:
-		r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`)
+		r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, `$`, `\$`, "\n", `\n`, "\r", `\r`)
 		return `"` + r.Replace(v) + `"`
 	}
 }

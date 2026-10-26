@@ -130,8 +130,15 @@ GREETING='hello world'
   and are left untouched when the content hasn't changed.
 - Values are written bare when they only contain safe characters, in single
   quotes when they contain no `'` or newline, and in double quotes with `\\`,
-  `\"`, `\n` and `\r` escapes otherwise. Docker Compose, python-dotenv, Node
-  `dotenv` and Vite all read these forms the same way.
+  `\"`, `\$`, `\n` and `\r` escapes otherwise. Docker Compose reads every
+  form back exactly. `$` is escaped inside double quotes because Compose,
+  shells and Vite expand variables there; python-dotenv and Node `dotenv`
+  keep that backslash, so a value with a `$` that also contains a `'` or a
+  newline reaches them with `\$`.
+- Some loaders expand variables even in single-quoted values: python-dotenv
+  expands `${NAME}`, and Vite expands `$NAME` and `${NAME}`. If a secret can
+  contain those, turn interpolation off in the loader (python-dotenv:
+  `interpolate=False`).
 - `sync` warns when a generated file isn't ignored by git.
 
 ## Missing values
