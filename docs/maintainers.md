@@ -25,8 +25,11 @@ can't publish the same version twice.
 
 If the release job fails after the tag exists (tags can't be moved or
 deleted), fix the cause on `main` if needed, then run **Actions → Release →
-Run workflow** with the tag, e.g. `v0.1.0`. GoReleaser replaces any assets
-that were already uploaded.
+Run workflow** from `main` with the tag, e.g. `v0.1.0`. The retry builds the
+tag's source but uses `.goreleaser.yaml` from `main`, so a fix to the release
+configuration takes effect without a new version. GoReleaser replaces any
+assets that were already uploaded and re-signs the checksums; the provenance,
+Homebrew, Scoop and Go proxy steps run again.
 
 ### Release candidates
 

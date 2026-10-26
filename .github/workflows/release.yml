@@ -97,12 +97,29 @@ jobs:
         if: steps.packaging-token.outputs.token == ''
         run: |
           echo "::notice::No token for davidtucker/homebrew-tap and davidtucker/scoop-bucket; Homebrew and Scoop are skipped. Create both repositories and install the release-please App on them (see docs/maintainers.md)."
+      # A manual retry builds the tag's source but uses the release
+      # configuration from the branch the workflow was dispatched from, so a
+      # fix to .goreleaser.yaml can rescue a release whose tag already exists
+      # (tags can't be moved). Other runs use the tag's own configuration. The
+      # file is copied outside the checkout because GoReleaser refuses to run
+      # on a modified working tree.
+      - name: Choose the GoReleaser configuration
+        id: config
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            git show "$GITHUB_SHA:.goreleaser.yaml" > "$RUNNER_TEMP/goreleaser.yaml"
+            echo "Using .goreleaser.yaml from $GITHUB_REF_NAME ($GITHUB_SHA)"
+            git diff --no-index --stat .goreleaser.yaml "$RUNNER_TEMP/goreleaser.yaml" || true
+          else
+            cp .goreleaser.yaml "$RUNNER_TEMP/goreleaser.yaml"
+          fi
+          echo "path=$RUNNER_TEMP/goreleaser.yaml" >> "$GITHUB_OUTPUT"
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         id: goreleaser
         with:
           distribution: goreleaser
           version: v2.19.0
-          args: release --clean
+          args: release --clean --config ${{ steps.config.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The App token; personal access tokens in these secrets still work
