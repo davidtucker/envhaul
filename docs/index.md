@@ -7,7 +7,7 @@ hide:
 ![envhaul](assets/brand/logo-light.svg){ .logo-light }
 ![envhaul](assets/brand/logo-dark.svg){ .logo-dark }
 
-<p class="envhaul-tagline">Haul config and secrets from your secret stores into <code>.env</code> files.</p>
+<p class="envhaul-tagline">Haul config and secrets from your vaults into <code>.env</code> files.</p>
 </div>
 
 **envhaul** (pronounced *E-N-V-haul*) generates the `.env` files for every
