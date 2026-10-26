@@ -1,8 +1,27 @@
-# Dependency updates. Commit prefixes follow Conventional Commits so
-# release-please can classify them:
-#   fix(deps)  runtime Go modules and the release image: shipped to users, so they cut a patch release
-#   ci(deps)   GitHub Actions: not user-facing, hidden from the changelog
-#   test(deps) the test emulator image
+# Dependency updates.
+#
+# Age gate: every version update waits 7 days after the new version is
+# published (`cooldown`), so a compromised or broken release has time to be
+# noticed and yanked before it reaches this repository. Security updates are
+# never delayed: Dependabot opens those as soon as an advisory is published.
+#
+# To override the age gate:
+#   - for one dependency permanently, add it to that ecosystem's
+#     `cooldown.exclude` list below (wildcards allowed);
+#   - for a one-off urgent update, bump it yourself in a PR
+#     (e.g. `go get example.com/mod@v1.2.3 && go mod tidy`).
+#
+# Merging: .github/workflows/dependabot-automerge.yml enables auto-merge for
+# updates up to the level set there (patch or minor); they merge once every
+# required check passes. Major updates always wait for a maintainer.
+#
+# Commit prefixes follow Conventional Commits so release-please can classify
+# them:
+#   fix(deps)   runtime Go modules and the release image: shipped to users,
+#               so they cut a patch release
+#   ci(deps)    GitHub Actions: not user-facing, hidden from the changelog
+#   test(deps)  the test emulator image
+#   docs(deps)  docs site tooling
 version: 2
 updates:
   - package-ecosystem: gomod
@@ -10,6 +29,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
+      # exclude: ["golang.org/x/*"]
     open-pull-requests-limit: 10
     commit-message:
       prefix: fix
@@ -29,6 +51,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
+      # exclude: ["actions/*"]
     commit-message:
       prefix: ci
       include: scope
@@ -42,6 +67,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: fix
       include: scope
@@ -51,6 +78,8 @@ updates:
     directory: /test/integration
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: test
       include: scope
@@ -60,6 +89,8 @@ updates:
     directory: /docs
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: docs
       include: scope
