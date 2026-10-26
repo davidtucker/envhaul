@@ -9,7 +9,8 @@
 3. The `release` job runs GoReleaser, which builds and signs binaries,
    packages, SBOMs and the container image, attests provenance, and opens
    commits on the Homebrew tap and Scoop bucket. The tap and bucket are
-   skipped while their tokens aren't configured.
+   skipped (with a notice in the run) until the App can write to them; see
+   [Homebrew and Scoop](#homebrew-and-scoop).
 4. Check the release page. Verify one artifact with the commands in
    [Security](security.md#verifying-releases).
 5. The last release step requests the new version from `proxy.golang.org`,
@@ -43,25 +44,52 @@ bucket are only exercised by stable releases.
 
 ### The release-please GitHub App
 
-release-please runs as a small GitHub App (`envhaul release`) rather than with
-the workflow's `GITHUB_TOKEN`. GitHub doesn't run CI on PRs opened with
+release-please runs as a small GitHub App rather than with the workflow's
+`GITHUB_TOKEN`. The release workflow uses the same App to publish to the
+Homebrew tap and Scoop bucket. GitHub doesn't run CI on PRs opened with
 `GITHUB_TOKEN` until a maintainer approves each run, and never triggers
 `pull_request_target` checks for them, so the release PR could never satisfy
 the required checks.
 
 The App needs these repository permissions: **Contents: read and write**,
 **Pull requests: read and write** and **Issues: read and write** (for
-labels). It is installed only on this repository. The workflow reads:
+labels). Install it on `envhaul`, `homebrew-tap` and `scoop-bucket` only. The
+workflows read:
 
 | Name | Kind | Value |
 | --- | --- | --- |
-| `RELEASE_PLEASE_APP_CLIENT_ID` | Actions **variable** | The App's Client ID |
+| `RELEASE_PLEASE_APP_CLIENT_ID` | Actions **variable** | The App's Client ID (the numeric App ID also works) |
 | `RELEASE_PLEASE_APP_PRIVATE_KEY` | Actions **secret** | A private key generated for the App (the whole `.pem` file) |
 
 Without them, release-please falls back to `GITHUB_TOKEN` and you'd have to
 approve the release PR's CI runs by hand. Rotate the private key by generating
 a new one in the App's settings, updating the secret, then deleting the old
 key.
+
+### Homebrew and Scoop
+
+Users install with `brew install davidtucker/tap/envhaul` and, on Windows,
+`scoop bucket add davidtucker https://github.com/davidtucker/scoop-bucket`
+then `scoop install envhaul`. Both read from repositories you own:
+
+- `davidtucker/homebrew-tap`: GoReleaser commits `Casks/envhaul.rb`, which
+  lists each macOS/Linux archive with its checksum, the man page and shell
+  completions.
+- `davidtucker/scoop-bucket`: GoReleaser commits `envhaul.json`, which lists
+  the Windows archives and checksums.
+
+During a stable release, the release job requests a token from the App that
+can only write to those two repositories (it expires within an hour), and the
+commits are attributed to the App's bot user. If either repository is
+missing, or the App isn't installed on it, both are skipped and the rest of
+the release still publishes. Pre-releases never publish to them.
+
+To publish an existing release to them after setting them up, run
+**Actions → Release → Run workflow** with its tag.
+
+`HOMEBREW_TAP_TOKEN` and `SCOOP_BUCKET_TOKEN` secrets (personal access tokens)
+still work as a fallback, for example in a fork without the App, but aren't
+needed here.
 
 ### Building locally
 
@@ -100,11 +128,10 @@ These settings live in GitHub, not in the repository.
 - [ ] Create the release-please GitHub App and set
       `RELEASE_PLEASE_APP_CLIENT_ID` / `RELEASE_PLEASE_APP_PRIVATE_KEY`
       (see [The release-please GitHub App](#the-release-please-github-app)).
-- [ ] Create `davidtucker/homebrew-tap` (with a `Casks/` directory) and
-      `davidtucker/scoop-bucket`.
-- [ ] Create fine-grained tokens with *Contents: read and write* on each, and
-      add them as the `HOMEBREW_TAP_TOKEN` and `SCOOP_BUCKET_TOKEN` Actions
-      secrets.
+- [ ] Create public repositories `davidtucker/homebrew-tap` and
+      `davidtucker/scoop-bucket` (a README is enough; GoReleaser creates the
+      files), then add both to the release-please App's installation
+      (App settings → Install App → Configure → Repository access).
 - [ ] Sign in at [codecov.io](https://codecov.io) with GitHub and enable
       `davidtucker/envhaul`. Uploads authenticate with GitHub OIDC, so no
       `CODECOV_TOKEN` is needed. The `Coverage` check isn't required, so a

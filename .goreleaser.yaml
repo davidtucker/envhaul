@@ -138,8 +138,8 @@ homebrew_casks:
     description: Haul config and secrets from AWS into .env files
     license: Apache-2.0
     commit_author:
-      name: envhaul-release-bot
-      email: davidtucker@users.noreply.github.com
+      name: '{{ if isEnvSet "PACKAGING_COMMIT_NAME" }}{{ .Env.PACKAGING_COMMIT_NAME }}{{ else }}envhaul-release-bot{{ end }}'
+      email: '{{ if isEnvSet "PACKAGING_COMMIT_EMAIL" }}{{ .Env.PACKAGING_COMMIT_EMAIL }}{{ else }}davidtucker@users.noreply.github.com{{ end }}'
     commit_msg_template: "envhaul {{ .Tag }}"
     binaries: [envhaul]
     manpages:
@@ -171,8 +171,8 @@ scoops:
     description: Haul config and secrets from AWS into .env files.
     license: Apache-2.0
     commit_author:
-      name: envhaul-release-bot
-      email: davidtucker@users.noreply.github.com
+      name: '{{ if isEnvSet "PACKAGING_COMMIT_NAME" }}{{ .Env.PACKAGING_COMMIT_NAME }}{{ else }}envhaul-release-bot{{ end }}'
+      email: '{{ if isEnvSet "PACKAGING_COMMIT_EMAIL" }}{{ .Env.PACKAGING_COMMIT_EMAIL }}{{ else }}davidtucker@users.noreply.github.com{{ end }}'
     commit_msg_template: "envhaul {{ .Tag }}"
     # Skipped when SCOOP_BUCKET_TOKEN isn't configured; pre-releases are
     # never published to the bucket.
