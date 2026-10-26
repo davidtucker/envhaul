@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/davidtucker/envhaul/compare/v0.1.0...v0.2.0) (2026-10-26)
+
+
+### Features
+
+* add HashiCorp Vault/OpenBao, 1Password, Google Cloud Secret Manager and Azure Key Vault sources ([#20](https://github.com/davidtucker/envhaul/issues/20)) ([5e9032c](https://github.com/davidtucker/envhaul/commit/5e9032c7dec87f7f2ac8c46898b52cd7aba4c7fb))
+
+
+### Documentation
+
+* split the README install instructions by platform ([#17](https://github.com/davidtucker/envhaul/issues/17)) ([b20c2d9](https://github.com/davidtucker/envhaul/commit/b20c2d92bf76fbc3c2ff470ce353ffb9c292e935))
+
 ## 0.1.0 (2026-10-26)
 
 
