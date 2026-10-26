@@ -14,6 +14,16 @@ aws_profile: acme-dev        # default profile for references without @profile
 aws_region: us-east-1
 ssm_prefix: /acme/dev        # relative SSM paths resolve under this prefix
 
+# Settings for sources other than AWS (all optional).
+vault:
+  address: https://vault.acme.example
+onepassword:
+  account: acme.1password.com
+gcp:
+  project: acme-dev
+azure:
+  vault: acme-dev-kv
+
 components:
   api:
     description: Backend API
@@ -54,3 +64,12 @@ components:
       # Absolute paths ignore ssm_prefix.
       HOSTED_ZONE_ID: "{{ssm:/acme/global/route53/HOSTED_ZONE_ID}}"
       GITHUB_TOKEN: "{{secret:acme/ci/github#token|trim}}"
+
+  tools:
+    description: Local developer tooling, pulling from several secret stores
+    env_file: tools/.env
+    vars:
+      SIGNING_KEY: "{{vault:payments/keys#signing}}"     # HashiCorp Vault
+      GITHUB_TOKEN: "{{op:Engineering/GitHub/token}}"    # 1Password
+      MAPS_API_KEY: "{{gcp:maps-api-key}}"               # Google Cloud
+      STORAGE_KEY: "{{azkv:storage-account-key}}"        # Azure Key Vault

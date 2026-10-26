@@ -98,7 +98,7 @@ dockers_v2:
       - linux/arm64
     labels:
       org.opencontainers.image.title: envhaul
-      org.opencontainers.image.description: Haul config and secrets from AWS into .env files.
+      org.opencontainers.image.description: Haul config and secrets from AWS, Vault, 1Password, GCP and Azure into .env files.
       org.opencontainers.image.source: https://github.com/davidtucker/envhaul
       org.opencontainers.image.url: https://davidtucker.github.io/envhaul
       org.opencontainers.image.licenses: Apache-2.0
@@ -122,7 +122,7 @@ nfpms:
     vendor: envhaul contributors
     homepage: https://davidtucker.github.io/envhaul
     maintainer: David Tucker <davidtucker@users.noreply.github.com>
-    description: Haul config and secrets from AWS into .env files.
+    description: Haul config and secrets from AWS, Vault, 1Password, GCP and Azure into .env files.
     license: Apache-2.0
     formats: [deb, rpm, apk]
     bindir: /usr/bin
@@ -160,7 +160,7 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Casks
     homepage: https://davidtucker.github.io/envhaul
-    description: Haul config and secrets from AWS into .env files
+    description: Generate .env files from AWS, Vault, 1Password, GCP and Azure secrets
     license: Apache-2.0
     commit_author:
       name: '{{ if isEnvSet "PACKAGING_COMMIT_NAME" }}{{ .Env.PACKAGING_COMMIT_NAME }}{{ else }}envhaul-release-bot{{ end }}'
@@ -197,7 +197,7 @@ scoops:
       # The release workflow always sets it, empty when there's no token.
       token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
     homepage: https://davidtucker.github.io/envhaul
-    description: Haul config and secrets from AWS into .env files.
+    description: Haul config and secrets from AWS, Vault, 1Password, GCP and Azure into .env files.
     license: Apache-2.0
     commit_author:
       name: '{{ if isEnvSet "PACKAGING_COMMIT_NAME" }}{{ .Env.PACKAGING_COMMIT_NAME }}{{ else }}envhaul-release-bot{{ end }}'

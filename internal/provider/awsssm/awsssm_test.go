@@ -205,3 +205,9 @@ func TestIdentity(t *testing.T) {
 		t.Errorf("Scheme/Description = %q/%q", p.Scheme(), p.Description())
 	}
 }
+
+func TestValidateRejectsSpaces(t *testing.T) {
+	if err := New(Options{}).Validate(ref(t, "ssm:api/my key")); err == nil || !strings.Contains(err.Error(), "spaces") {
+		t.Errorf("err = %v", err)
+	}
+}

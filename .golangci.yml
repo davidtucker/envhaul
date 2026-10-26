@@ -22,6 +22,12 @@ linters:
         - G301 # 0755 for project directories (env file parents, doc output) is intended
         - G204 # exec with variable command: `envhaul exec` runs user-supplied commands by design
         - G304 # file inclusion via variable: reading the config and env files the user names is the job
+    staticcheck:
+      checks:
+        - all
+        - -ST1000 # package comments are present where useful; not enforced
+        - -ST1003 # naming: keep Go-standard names but allow existing acronym spellings
+        - -ST1005 # error strings are shown to users and often start with product names (Key Vault, Secret Manager)
     revive:
       rules:
         - name: exported

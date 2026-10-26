@@ -37,6 +37,22 @@
       "description": "Prefix prepended to Secrets Manager ids that are not ARNs.",
       "type": "string"
     },
+    "vault": {
+      "description": "HashiCorp Vault / OpenBao settings for {{vault:...}} references.",
+      "$ref": "#/$defs/vault"
+    },
+    "onepassword": {
+      "description": "1Password settings for {{op:...}} references (read through the op CLI).",
+      "$ref": "#/$defs/onepassword"
+    },
+    "gcp": {
+      "description": "Google Cloud Secret Manager settings for {{gcp:...}} references.",
+      "$ref": "#/$defs/gcp"
+    },
+    "azure": {
+      "description": "Azure Key Vault settings for {{azkv:...}} references.",
+      "$ref": "#/$defs/azure"
+    },
     "components": {
       "description": "Each component produces one env file.",
       "type": "object",
@@ -72,6 +88,164 @@
               "{{secret:db#password|urlencode}}",
               "{{ssm:optional|default:fallback}}"
             ]
+          }
+        }
+      }
+    },
+    "vault": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Vault address, e.g. https://vault.example.com. Defaults to $VAULT_ADDR."
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Vault Enterprise / OpenBao namespace. Defaults to $VAULT_NAMESPACE."
+        },
+        "mount": {
+          "type": "string",
+          "description": "KV secrets engine mount for paths without a leading /. Defaults to secret."
+        },
+        "kv_version": {
+          "description": "KV secrets engine version. Defaults to 2.",
+          "type": ["string", "integer"],
+          "enum": ["1", "2", 1, 2]
+        },
+        "token_env": {
+          "type": "string",
+          "description": "Environment variable holding the token. Defaults to $VAULT_TOKEN, then ~/.vault-token."
+        },
+        "profiles": {
+          "description": "Named profiles selected with @name. A profile's settings override the defaults above; @name with no matching profile is used as the namespace.",
+          "type": ["object", "null"],
+          "propertyNames": { "pattern": "^[A-Za-z0-9_.+=,-]+$" },
+          "additionalProperties": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Vault address, e.g. https://vault.example.com. Defaults to $VAULT_ADDR."
+              },
+              "namespace": {
+                "type": "string",
+                "description": "Vault Enterprise / OpenBao namespace. Defaults to $VAULT_NAMESPACE."
+              },
+              "mount": {
+                "type": "string",
+                "description": "KV secrets engine mount for paths without a leading /. Defaults to secret."
+              },
+              "kv_version": {
+                "description": "KV secrets engine version. Defaults to 2.",
+                "type": ["string", "integer"],
+                "enum": ["1", "2", 1, 2]
+              },
+              "token_env": {
+                "type": "string",
+                "description": "Environment variable holding the token. Defaults to $VAULT_TOKEN, then ~/.vault-token."
+              }
+            }
+          }
+        }
+      }
+    },
+    "onepassword": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string",
+          "description": "1Password account (sign-in address, email or account ID) passed to op --account. Defaults to op's default account."
+        },
+        "profiles": {
+          "description": "Named profiles selected with @name. @name with no matching profile is used as the account.",
+          "type": ["object", "null"],
+          "propertyNames": { "pattern": "^[A-Za-z0-9_.+=,-]+$" },
+          "additionalProperties": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "account": {
+                "type": "string",
+                "description": "1Password account (sign-in address, email or account ID) passed to op --account. Defaults to op's default account."
+              }
+            }
+          }
+        }
+      }
+    },
+    "gcp": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Project ID for secret names that aren't full resource names. Defaults to $GOOGLE_CLOUD_PROJECT or the credentials' project."
+        },
+        "impersonate_service_account": {
+          "type": "string",
+          "description": "Service account email to impersonate with your Application Default Credentials."
+        },
+        "profiles": {
+          "description": "Named profiles selected with @name. @name with no matching profile is used as the project ID.",
+          "type": ["object", "null"],
+          "propertyNames": { "pattern": "^[A-Za-z0-9_.+=,-]+$" },
+          "additionalProperties": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "project": {
+                "type": "string",
+                "description": "Project ID for secret names that aren't full resource names. Defaults to $GOOGLE_CLOUD_PROJECT or the credentials' project."
+              },
+              "impersonate_service_account": {
+                "type": "string",
+                "description": "Service account email to impersonate with your Application Default Credentials."
+              }
+            }
+          }
+        }
+      }
+    },
+    "azure": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "tenant": {
+          "type": "string",
+          "description": "Microsoft Entra tenant ID to authenticate against."
+        },
+        "vault": {
+          "type": "string",
+          "description": "Default key vault name for references without a vault/ prefix."
+        },
+        "vault_dns_suffix": {
+          "type": "string",
+          "description": "Key Vault DNS suffix for sovereign clouds. Defaults to vault.azure.net."
+        },
+        "profiles": {
+          "description": "Named profiles selected with @name. @name with no matching profile is used as the tenant ID.",
+          "type": ["object", "null"],
+          "propertyNames": { "pattern": "^[A-Za-z0-9_.+=,-]+$" },
+          "additionalProperties": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "tenant": {
+                "type": "string",
+                "description": "Microsoft Entra tenant ID to authenticate against."
+              },
+              "vault": {
+                "type": "string",
+                "description": "Default key vault name for references without a vault/ prefix."
+              },
+              "vault_dns_suffix": {
+                "type": "string",
+                "description": "Key Vault DNS suffix for sovereign clouds. Defaults to vault.azure.net."
+              }
+            }
           }
         }
       }

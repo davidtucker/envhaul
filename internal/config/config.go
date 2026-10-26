@@ -35,8 +35,50 @@ type Config struct {
 	SSMPrefix    string
 	SecretPrefix string
 
+	// Sources holds the settings blocks for non-AWS sources (vault,
+	// onepassword, gcp, azure), keyed by block name. Absent blocks have no
+	// entry.
+	Sources map[string]*Source
+
 	// Components are in file order.
 	Components []*Component
+}
+
+// Source is a source's settings block: default settings plus named profiles
+// that references select with @profile.
+type Source struct {
+	Settings map[string]string
+	Profiles map[string]map[string]string
+}
+
+// Setting returns key for the named profile, falling back to the block's
+// default. A nil Source, an unknown profile or an unset key give "".
+func (s *Source) Setting(profile, key string) string {
+	if s == nil {
+		return ""
+	}
+	if v := s.Profiles[profile][key]; v != "" {
+		return v
+	}
+	return s.Settings[key]
+}
+
+// HasProfile reports whether the block defines the named profile.
+func (s *Source) HasProfile(name string) bool {
+	if s == nil {
+		return false
+	}
+	_, ok := s.Profiles[name]
+	return ok
+}
+
+// Source returns the settings block for name, or nil when the config has
+// none. Methods on a nil *Source are safe to call.
+func (c *Config) Source(name string) *Source {
+	if c == nil {
+		return nil
+	}
+	return c.Sources[name]
 }
 
 // Component is one generated env file.
@@ -92,15 +134,29 @@ func (ds Diagnostics) Error() string {
 // Options customize Load.
 type Options struct {
 	// ValidateRef, if set, performs provider-specific checks on each
-	// reference (for example, that its scheme is known).
-	ValidateRef func(*template.Ref) error
+	// reference (for example, that its scheme is known). It runs after the
+	// whole file is parsed, so it can consult source settings that appear
+	// after the components.
+	ValidateRef func(*Config, *template.Ref) error
 }
 
 // TopLevelKeys are the keys allowed at the top of a config file. It is used
 // by tests to keep the published JSON Schema in sync.
 var TopLevelKeys = []string{
-	"version", "name", "description", "aws_profile", "aws_region", "ssm_prefix", "secret_prefix", "components",
+	"version", "name", "description", "aws_profile", "aws_region", "ssm_prefix", "secret_prefix",
+	"vault", "onepassword", "gcp", "azure", "components",
 }
+
+// SourceKeys lists the settings each source block accepts. Every block may
+// also have `profiles`: a map of profile name to the same settings.
+var SourceKeys = map[string][]string{
+	"vault":       {"address", "namespace", "mount", "kv_version", "token_env"},
+	"onepassword": {"account"},
+	"gcp":         {"project", "impersonate_service_account"},
+	"azure":       {"tenant", "vault", "vault_dns_suffix"},
+}
+
+var profileNameRe = regexp.MustCompile(`^[A-Za-z0-9_.+=,-]+$`)
 
 // ComponentKeys are the keys allowed in a component.
 var ComponentKeys = []string{"description", "env_file", "vars"}
@@ -138,6 +194,10 @@ func Parse(path string, data []byte, opts Options) (*Config, error) {
 		return nil, Diagnostics{{File: p.file, Msg: "config file is empty"}}
 	}
 	root := doc.Content[0]
+	if isNull(root) {
+		// e.g. a file holding only "---".
+		return nil, Diagnostics{{File: p.file, Msg: "config file is empty"}}
+	}
 	if root.Kind != yaml.MappingNode {
 		p.errorf(root, "top level must be a mapping")
 		return nil, p.diags
@@ -173,6 +233,11 @@ func Parse(path string, data []byte, opts Options) (*Config, error) {
 			cfg.SSMPrefix, _ = p.scalar(v, key)
 		case "secret_prefix":
 			cfg.SecretPrefix, _ = p.scalar(v, key)
+		case "vault", "onepassword", "gcp", "azure":
+			if cfg.Sources == nil {
+				cfg.Sources = map[string]*Source{}
+			}
+			cfg.Sources[key] = p.source(key, v)
 		case "components":
 			sawComponents = true
 			cfg.Components = p.components(v)
@@ -202,10 +267,77 @@ func Parse(path string, data []byte, opts Options) (*Config, error) {
 		seen[target] = c
 	}
 
+	if p.opts.ValidateRef != nil {
+		for _, r := range p.refs {
+			if err := p.opts.ValidateRef(cfg, r.ref); err != nil {
+				p.errorAtOffset(r.node, r.raw, r.ref.Offset, err.Error())
+			}
+		}
+		sort.SliceStable(p.diags, func(i, j int) bool {
+			a, b := p.diags[i].Pos, p.diags[j].Pos
+			return a.Line < b.Line || (a.Line == b.Line && a.Col < b.Col)
+		})
+	}
+
 	if len(p.diags) > 0 {
 		return nil, p.diags
 	}
 	return cfg, nil
+}
+
+// source parses a source settings block.
+func (p *parser) source(name string, n *yaml.Node) *Source {
+	src := &Source{Settings: map[string]string{}, Profiles: map[string]map[string]string{}}
+	if isNull(n) {
+		return src
+	}
+	if n.Kind != yaml.MappingNode {
+		p.errorf(n, "%s must be a mapping of settings", name)
+		return src
+	}
+	allowed := append([]string{"profiles"}, SourceKeys[name]...)
+	p.eachPair(n, allowed, func(key string, _, v *yaml.Node) {
+		if key != "profiles" {
+			src.Settings[key] = p.sourceSetting(name, key, v)
+			return
+		}
+		if isNull(v) {
+			return
+		}
+		if v.Kind != yaml.MappingNode {
+			p.errorf(v, "%s.profiles must be a mapping of profile name to settings", name)
+			return
+		}
+		p.eachPair(v, nil, func(profile string, pk, pv *yaml.Node) {
+			if !profileNameRe.MatchString(profile) {
+				p.errorf(pk, "invalid %s profile name %q (letters, digits and _.+=,- only)", name, profile)
+				return
+			}
+			settings := map[string]string{}
+			if pv.Kind != yaml.MappingNode {
+				if !isNull(pv) {
+					p.errorf(pv, "%s profile %q must be a mapping of settings", name, profile)
+				}
+			} else {
+				p.eachPair(pv, SourceKeys[name], func(key string, _, sv *yaml.Node) {
+					settings[key] = p.sourceSetting(name, key, sv)
+				})
+			}
+			src.Profiles[profile] = settings
+		})
+	})
+	return src
+}
+
+func (p *parser) sourceSetting(source, key string, n *yaml.Node) string {
+	v, ok := p.scalar(n, source+"."+key)
+	if !ok {
+		return ""
+	}
+	if source == "vault" && key == "kv_version" && v != "" && v != "1" && v != "2" {
+		p.errorf(n, "vault.kv_version must be 1 or 2")
+	}
+	return v
 }
 
 func (p *parser) components(n *yaml.Node) []*Component {
@@ -281,11 +413,7 @@ func (p *parser) vars(n *yaml.Node) []*Var {
 					p.errorAtOffset(v, raw, ref.Offset, err.Error())
 				}
 			}
-			if p.opts.ValidateRef != nil {
-				if err := p.opts.ValidateRef(ref); err != nil {
-					p.errorAtOffset(v, raw, ref.Offset, err.Error())
-				}
-			}
+			p.refs = append(p.refs, pendingRef{node: v, raw: raw, ref: ref})
 		}
 		out = append(out, &Var{Name: name, Raw: raw, Template: tmpl, Pos: pos(v)})
 	})
@@ -296,6 +424,14 @@ type parser struct {
 	file  string
 	opts  Options
 	diags Diagnostics
+	// refs are checked with Options.ValidateRef once the file is parsed.
+	refs []pendingRef
+}
+
+type pendingRef struct {
+	node *yaml.Node
+	raw  string
+	ref  *template.Ref
 }
 
 func (p *parser) errorf(n *yaml.Node, format string, args ...any) {

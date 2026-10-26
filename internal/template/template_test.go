@@ -121,7 +121,7 @@ func TestParseErrors(t *testing.T) {
 		{"{{ssm:}}", "empty path"},
 		{"{{ssm:#k}}", "empty path"},
 		{"{{secret:x#}}", "empty key"},
-		{"{{ssm:a b}}", "whitespace"},
+		{"{{ssm:a\tb}}", "tabs or line breaks"},
 		{"{{ssm:x@bad profile}}", "invalid profile"},
 		{"{{ssm:x|}}", "invalid pipe"},
 		{"{{ssm:x|Upper}}", "invalid pipe"},

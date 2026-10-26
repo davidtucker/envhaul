@@ -9,10 +9,10 @@ or `exec`:
 
 | Part | Meaning |
 | --- | --- |
-| `scheme` | The source: `ssm` or `secret`. |
-| `path` | What to read. For SSM, paths without a leading `/` are joined onto `ssm_prefix`. For Secrets Manager, `secret_prefix` is prepended unless the id is an ARN. |
-| `#key` | Optional. Select one top-level key from a JSON value. String values are used as-is; numbers, booleans, objects and arrays are written as compact JSON; `null` becomes empty. |
-| `@profile` | Optional. Use this AWS profile instead of the default. |
+| `scheme` | The source: `ssm`, `secret`, `vault`, `op`, `gcp` or `azkv` (see [Sources](sources/index.md)). |
+| `path` | What to read, in the source's own form. For SSM, paths without a leading `/` are joined onto `ssm_prefix`; for Secrets Manager, `secret_prefix` is prepended unless the id is an ARN. Each [source page](sources/index.md) describes its paths and versions. |
+| `#key` | Optional. Select one top-level key from a JSON value (for Vault, one field of the secret). String values are used as-is; numbers, booleans, objects and arrays are written as compact JSON; `null` becomes empty. |
+| `@profile` | Optional. For AWS, use this AWS profile instead of the default. For other sources, pick a profile from the source's settings block, or the source's scope directly (see [Source settings](config.md#source-settings)). |
 | `\|fn` | Optional. Transform the value; see [Pipes](#pipes). |
 
 Spaces around the parts are ignored: `{{ ssm:api/KEY | trim }}` works.
@@ -38,6 +38,12 @@ vars:
 
   # Secrets Manager, one key of a JSON secret, from another profile
   TOKEN: "{{secret:acme/ci/github#token@acme-shared}}"
+
+  # Other sources
+  VAULT_KEY: "{{vault:team/api#key}}"
+  OP_TOKEN: "{{op:Engineering/GitHub/token}}"
+  GCP_KEY: "{{gcp:service-key:3}}"
+  AZ_PASSWORD: "{{azkv:dev-kv/db-password}}"
 
   # Several references and literal text in one value
   DATABASE_URL: "postgresql://{{secret:db#username}}:{{secret:db#password|urlencode}}@localhost:5432/app"

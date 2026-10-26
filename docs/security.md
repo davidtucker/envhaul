@@ -15,8 +15,14 @@
 - **`diff` masks values** unless you pass `--show-values`.
 - **`exec` skips the disk entirely.** Values go straight into the child
   process's environment.
-- **Read-only AWS access.** envhaul only calls `ssm:GetParameters` and
-  `secretsmanager:GetSecretValue`.
+- **Read-only access to every source.** envhaul only reads:
+  `ssm:GetParameters` and `secretsmanager:GetSecretValue` on AWS, KV reads
+  on Vault and OpenBao, `op read` for 1Password, secret version access on
+  Google Cloud, and Get Secret on Azure Key Vault. It never writes to a
+  source.
+- **No credentials of its own.** Each source uses the sign-in its own tools
+  already set up (AWS profiles, `vault login`, the `op` CLI, `gcloud`,
+  `az login`), so envhaul never stores a password, token or key.
 
 Environment variables are visible to other processes running as the same
 user, and `.env` files are plaintext. envhaul makes them easy to manage but

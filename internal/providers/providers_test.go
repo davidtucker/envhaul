@@ -11,6 +11,7 @@ import (
 	"github.com/davidtucker/envhaul/internal/awsclient"
 	"github.com/davidtucker/envhaul/internal/config"
 	"github.com/davidtucker/envhaul/internal/provider"
+	"github.com/davidtucker/envhaul/internal/template"
 )
 
 func TestAWSSettings(t *testing.T) {
@@ -35,7 +36,7 @@ func TestAWSSettings(t *testing.T) {
 }
 
 func TestValidatorKnowsBuiltins(t *testing.T) {
-	if got := Validator().Schemes(); len(got) != 2 || got[0] != "secret" || got[1] != "ssm" {
+	if got := strings.Join(Validator(nil).Schemes(), ","); got != "azkv,gcp,op,secret,ssm,vault" {
 		t.Errorf("Schemes() = %v", got)
 	}
 }
@@ -64,5 +65,38 @@ func TestNewWiresAWSClients(t *testing.T) {
 	p, _ := New(Options{Config: cfg}).Get("ssm")
 	if _, err := p.Fetch(context.Background(), nil); err == nil || !strings.Contains(err.Error(), "not configured for remote access") {
 		t.Errorf("offline Fetch err = %v", err)
+	}
+}
+
+func TestValidateRefUsesConfigSettings(t *testing.T) {
+	ref := func(s string) *template.Ref {
+		tmpl, err := template.Parse(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tmpl.Refs()[0]
+	}
+	validate := ValidateRef()
+	withVault := &config.Config{Sources: map[string]*config.Source{"azure": {Settings: map[string]string{"vault": "dev-kv"}}}}
+	if err := validate(withVault, ref("{{azkv:db-password}}")); err != nil {
+		t.Errorf("with azure.vault set: %v", err)
+	}
+	if err := validate(&config.Config{}, ref("{{azkv:db-password}}")); err == nil || !strings.Contains(err.Error(), "needs a vault") {
+		t.Errorf("without azure.vault: %v", err)
+	}
+	if err := validate(nil, ref("{{nope:x}}")); err == nil || !strings.Contains(err.Error(), `unknown source "nope"`) {
+		t.Errorf("unknown scheme: %v", err)
+	}
+}
+
+func TestOnlineProvidersFetch(t *testing.T) {
+	// Online without AWS still enables the other sources (they then fail on
+	// missing configuration, not on being offline).
+	reg := New(Options{Online: true})
+	p, _ := reg.Get("vault")
+	t.Setenv("VAULT_ADDR", "")
+	_, err := p.Fetch(context.Background(), []provider.Request{{Path: "secret/x", Base: "secret"}})
+	if err == nil || strings.Contains(err.Error(), "not configured for remote access") {
+		t.Errorf("online vault err = %v", err)
 	}
 }

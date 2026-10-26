@@ -38,6 +38,7 @@
       <g stroke="#FBBF24"><path d="M176 0V60M176 40A20 20 0 0 1 216 40V60M276 20V60M296 20V40A20 20 0 0 0 336 40M336 20V60M356 0V60"/><circle cx="256" cy="40" r="20"/></g>
     </g>
   </g>
-  <text x="640" y="430" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="40" fill="#CBD5E1">Haul config and secrets from AWS into .env files</text>
-  <text x="640" y="500" text-anchor="middle" font-family="Menlo, SF Mono, Consolas, monospace" font-size="26" fill="#94A3B8"><tspan fill="#FBBF24">{{ssm:path}}</tspan>  ·  <tspan fill="#FBBF24">{{secret:id#key}}</tspan>  →  <tspan fill="#E2E8F0">.env</tspan></text>
+  <text x="640" y="418" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="40" fill="#CBD5E1">Haul config and secrets into .env files</text>
+  <text x="640" y="466" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="28" fill="#94A3B8">AWS  ·  Vault  ·  1Password  ·  Google Cloud  ·  Azure</text>
+  <text x="640" y="530" text-anchor="middle" font-family="Menlo, SF Mono, Consolas, monospace" font-size="26" fill="#94A3B8"><tspan fill="#FBBF24">{{ssm:path}}</tspan>  ·  <tspan fill="#FBBF24">{{vault:app/db#key}}</tspan>  →  <tspan fill="#E2E8F0">.env</tspan></text>
 </svg>

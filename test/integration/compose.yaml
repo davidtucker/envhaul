@@ -1,7 +1,10 @@
-# AWS emulator for integration tests: `make emulator-up`, then
-# `make test-integration`. moto serves SSM and Secrets Manager on one port.
-# CI starts the same file, so this is the only place the version is pinned
-# (Dependabot keeps it up to date).
+# Backends for integration tests: `make emulator-up`, then
+# `make test-integration`. CI starts this same file, so these are the only
+# places the versions are pinned (Dependabot keeps them up to date).
+#
+#   moto     AWS SSM Parameter Store and Secrets Manager (emulated)
+#   vault    HashiCorp Vault dev server (KV v2 at secret/, root token "root")
+#   openbao  OpenBao dev server, the open-source Vault fork (token "root")
 services:
   moto:
     image: motoserver/moto:5.2.4
@@ -9,6 +12,28 @@ services:
       - "127.0.0.1:5000:5000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/moto-api/')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  vault:
+    image: hashicorp/vault:2.2.1
+    command: ["server", "-dev", "-dev-root-token-id=root", "-dev-listen-address=0.0.0.0:8200"]
+    cap_add: [IPC_LOCK]
+    ports:
+      - "127.0.0.1:8200:8200"
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  openbao:
+    image: openbao/openbao:2.7.1
+    command: ["server", "-dev", "-dev-root-token-id=root", "-dev-listen-address=0.0.0.0:8200"]
+    cap_add: [IPC_LOCK]
+    ports:
+      - "127.0.0.1:8210:8200"
+    healthcheck:
+      test: ["CMD", "bao", "status", "-address=http://127.0.0.1:8200"]
       interval: 2s
       timeout: 3s
       retries: 30

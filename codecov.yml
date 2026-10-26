@@ -1,0 +1,14 @@
+# Codecov status checks (https://docs.codecov.com/docs/commit-status).
+# Neither is a required check; they flag real coverage regressions without
+# failing on tiny fluctuations.
+coverage:
+  status:
+    project:
+      default:
+        # Compare with the base commit; allow the total to drop by up to 1%.
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        # Lines added or changed by a PR should be at least 85% covered.
+        target: 85%
