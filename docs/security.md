@@ -44,6 +44,14 @@ Verify an archive's build provenance with the GitHub CLI:
 gh attestation verify envhaul_0.1.0_linux_amd64.tar.gz --repo davidtucker/envhaul
 ```
 
+The same attestation is attached to each release as
+`envhaul_<version>.intoto.jsonl`, so you can also verify offline:
+
+```sh
+gh attestation verify envhaul_0.1.0_linux_amd64.tar.gz \
+  --bundle envhaul_0.1.0.intoto.jsonl --repo davidtucker/envhaul
+```
+
 Container images are signed too:
 
 ```sh

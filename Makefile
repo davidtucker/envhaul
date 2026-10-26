@@ -83,7 +83,7 @@ manpages: ## Generate man pages into ./manpages
 .PHONY: docs
 docs: ## Generate the CLI reference and serve the docs site locally
 	go run ./cmd/envhaul gen docs docs/reference/cli
-	python3 -m venv .venv && .venv/bin/pip install -q -r docs/requirements.txt
+	python3 -m venv .venv && .venv/bin/pip install -q --require-hashes -r docs/requirements.txt
 	.venv/bin/mkdocs serve
 
 .PHONY: snapshot
