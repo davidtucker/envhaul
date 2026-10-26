@@ -4,7 +4,7 @@
     <img alt="envhaul" src=".github/assets/logo-light.svg" width="420">
   </picture>
 </p>
-<p align="center">Haul config and secrets from AWS into <code>.env</code> files.</p>
+<p align="center">Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into <code>.env</code> files.</p>
 
 <p align="center">
   <a href="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/davidtucker/envhaul/actions/workflows/ci.yml/badge.svg"></a>
@@ -19,8 +19,10 @@
 
 envhaul generates the `.env` files for every part of your project from one
 reviewable config file. Plain values live in the config next to references
-to **AWS SSM Parameter Store** and **Secrets Manager**, which envhaul resolves
-using your **named AWS profiles**, across as many accounts as you need.
+to your secret stores (**AWS SSM Parameter Store and Secrets Manager,
+HashiCorp Vault and OpenBao, 1Password, Google Cloud Secret Manager and
+Azure Key Vault**), which envhaul resolves with the sign-ins you already
+have, such as your named AWS profiles across as many accounts as you need.
 
 ```yaml
 # envhaul.yaml
@@ -37,6 +39,8 @@ components:
       STRIPE_SECRET_KEY: "{{ssm:api/STRIPE_SECRET_KEY}}"         # /acme/dev/api/STRIPE_SECRET_KEY
       OPENAI_API_KEY: "{{ssm:api/OPENAI_API_KEY@acme-shared}}"   # another account
       DATABASE_URL: "postgresql://{{secret:acme/dev/db#username}}:{{secret:acme/dev/db#password|urlencode}}@localhost/acme"
+      SIGNING_KEY: "{{vault:payments/keys#signing}}"            # HashiCorp Vault
+      GITHUB_TOKEN: "{{op:Engineering/GitHub/token}}"           # 1Password
   web:
     env_file: web/.env
     vars:
@@ -46,7 +50,7 @@ components:
 
 ```console
 $ envhaul sync
-wrote  services/api/.env  (4 vars)
+wrote  services/api/.env  (6 vars)
 wrote  web/.env           (2 vars)
 ```
 
@@ -54,10 +58,15 @@ wrote  web/.env           (2 vars)
 
 - **One config, every component.** API, frontend, infrastructure and tooling
   each get their own `.env`, in variable order, from one file you can review.
-- **Secrets stay in AWS.** Only references are committed. Generated files are
-  written atomically with mode `0600`, and values never appear in logs.
-- **Named profiles and multiple accounts.** Each reference can name its own
-  profile. SSO, assume-role and `credential_process` all work.
+- **Secrets stay where they are.** Only references are committed. Generated
+  files are written atomically with mode `0600`, and values never appear in
+  logs.
+- **Many sources, one file.** AWS, Vault/OpenBao, 1Password, Google Cloud and
+  Azure side by side, even within one value.
+- **Your existing sign-ins.** AWS profiles (SSO, assume-role,
+  `credential_process`), `vault login`, the `op` CLI, `gcloud` and `az login`
+  work as they are. `@profile` reaches other accounts, namespaces, projects
+  and tenants.
 - **Templates and pipes.** Build connection strings from several secrets, and
   apply `urlencode`, `trim`, `base64`, `default:` and more.
 - **Safe workflows.** `validate` checks the config offline with
@@ -146,6 +155,20 @@ envhaul sync        # write the .env files
 | `validate` | Check the config (offline) |
 | `init` | Create a starter config |
 
+## Sources
+
+| Scheme | Source | Example |
+| --- | --- | --- |
+| `ssm` | AWS SSM Parameter Store | `{{ssm:api/KEY}}` |
+| `secret` | AWS Secrets Manager | `{{secret:acme/dev/db#password}}` |
+| `vault` | HashiCorp Vault and OpenBao (KV v1 and v2) | `{{vault:app/db#password}}` |
+| `op` | 1Password (through the `op` CLI) | `{{op:Engineering/Stripe/credential}}` |
+| `gcp` | Google Cloud Secret Manager | `{{gcp:db-password:3}}` |
+| `azkv` | Azure Key Vault | `{{azkv:dev-kv/db-password}}` |
+
+Each source page in the [documentation](https://davidtucker.github.io/envhaul/sources/)
+covers sign-in, profiles, settings and required permissions.
+
 ## Reference syntax
 
 ```
@@ -159,6 +182,7 @@ envhaul sync        # write the .env files
 | `{{secret:db}}` | The whole Secrets Manager secret |
 | `{{secret:db#password}}` | One key of a JSON secret |
 | `{{ssm:api/KEY@shared}}` | Using the `shared` AWS profile |
+| `{{vault:app/db:3#password@prod}}` | Version 3 of a Vault secret, one field, the `prod` profile |
 | `{{secret:db#pass\|urlencode}}` | URL-encoded, e.g. for connection strings |
 | `{{ssm:opt\|default:fallback}}` | `fallback` when missing or empty |
 

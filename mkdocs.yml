@@ -1,5 +1,5 @@
 site_name: envhaul
-site_description: Haul config and secrets from AWS into .env files.
+site_description: Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into .env files.
 site_url: https://davidtucker.github.io/envhaul/
 repo_url: https://github.com/davidtucker/envhaul
 repo_name: davidtucker/envhaul
@@ -77,6 +77,10 @@ nav:
       - Overview: sources/index.md
       - SSM Parameter Store: sources/ssm.md
       - Secrets Manager: sources/secrets-manager.md
+      - Vault and OpenBao: sources/vault.md
+      - 1Password: sources/1password.md
+      - Google Cloud Secret Manager: sources/gcp.md
+      - Azure Key Vault: sources/azure-key-vault.md
   - Security: security.md
   - CLI reference: reference/cli/envhaul.md
   - FAQ: faq.md

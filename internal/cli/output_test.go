@@ -149,7 +149,7 @@ func TestExitErrorAndDefaultRegistry(t *testing.T) {
 		t.Errorf("ExitError.Error() = %q", got)
 	}
 	reg := defaultRegistry(&config.Config{}, &Globals{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if got := strings.Join(reg.Schemes(), ","); got != "secret,ssm" {
+	if got := strings.Join(reg.Schemes(), ","); got != "azkv,gcp,op,secret,ssm,vault" {
 		t.Errorf("default schemes = %s", got)
 	}
 }

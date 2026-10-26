@@ -1,5 +1,6 @@
 // Command envhaul generates .env files from a config file, resolving values
-// from AWS SSM Parameter Store and Secrets Manager.
+// from AWS SSM Parameter Store and Secrets Manager, HashiCorp Vault and
+// OpenBao, 1Password, Google Cloud Secret Manager and Azure Key Vault.
 package main
 
 import (

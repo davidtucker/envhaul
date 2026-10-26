@@ -5,7 +5,7 @@ stdout '^ok: envhaul.yaml is valid: 1 component, 2 variables, 1 reference$'
 ! exec envhaul -c bad.yaml validate
 stderr '^bad.yaml:1:1: unknown key "nmae"'
 stderr '^bad.yaml:6:7: invalid variable name "1BAD"'
-stderr '^bad.yaml:7:13: unknown source "vault" in \{\{vault:x\}\} \(available: secret, ssm\)'
+stderr '^bad.yaml:7:13: unknown source "nope" in \{\{nope:x\}\} \(available: azkv, gcp, op, secret, ssm, vault\)'
 stderr '^bad.yaml:8:14: unknown pipe function "nope"'
 stderr '^bad.yaml:9:13: unterminated reference'
 stderr 'invalid: 5 problems'
@@ -34,6 +34,6 @@ components:
     env_file: .env
     vars:
       1BAD: x
-      SRC: "{{vault:x}}"
+      SRC: "{{nope:x}}"
       PIPE: "{{ssm:x|nope}}"
       UNT: "{{ssm:x"

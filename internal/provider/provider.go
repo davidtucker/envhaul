@@ -24,6 +24,10 @@ type Request struct {
 	Profile string
 	// Region is the region to use. Empty means the profile's default.
 	Region string
+	// Base is an optional provider-specific prefix of Path that the provider
+	// needs to split back out, such as a Vault mount (which may itself
+	// contain slashes).
+	Base string
 }
 
 // Result is the outcome of fetching one Request.
@@ -82,7 +86,7 @@ func (r *Registry) Schemes() []string {
 }
 
 // ValidateRef checks that ref's scheme is registered and that the provider
-// accepts it. It is suitable for config.Options.ValidateRef.
+// accepts it.
 func (r *Registry) ValidateRef(ref *template.Ref) error {
 	p, ok := r.Get(ref.Scheme)
 	if !ok {

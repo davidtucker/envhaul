@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/davidtucker/envhaul/internal/provider"
 	"github.com/davidtucker/envhaul/internal/provider/awssecrets"
 	"github.com/davidtucker/envhaul/internal/provider/awsssm"
+	"github.com/davidtucker/envhaul/internal/provider/onepassword"
 	"github.com/davidtucker/envhaul/internal/providers"
 )
 
@@ -28,12 +30,13 @@ import (
 // directory:
 //
 //	{"ssm": {"profile|/name": "value"}, "secret": {"profile|id": "value"},
-//	 "errors": {"profile": "message"}}
+//	 "op": {"account|vault/item/field": "value"}, "errors": {"profile": "message"}}
 //
 // An empty profile is written as "default".
 type fakeAWS struct {
 	SSM    map[string]string `json:"ssm"`
 	Secret map[string]string `json:"secret"`
+	Op     map[string]string `json:"op"`
 	Errors map[string]string `json:"errors"`
 }
 
@@ -103,6 +106,20 @@ func fakeRegistry(cfg *config.Config, g *Globals, logger *slog.Logger) *provider
 			Prefix: cfg.SecretPrefix, Settings: settings, Logger: logger,
 			Clients: func(_ context.Context, profile, _ string) (awssecrets.API, error) {
 				return fakeSM{f, profileKey(profile)}, nil
+			},
+		}),
+		// The real 1Password provider, with `op read` answered from fake-aws.json.
+		onepassword.New(onepassword.Options{
+			Source: cfg.Source("onepassword"), Online: true, Logger: logger,
+			Run: func(_ context.Context, args []string) ([]byte, []byte, error) {
+				account := ""
+				if i := slices.Index(args, "--account"); i >= 0 {
+					account = args[i+1]
+				}
+				if v, ok := f.Op[account+"|"+strings.TrimPrefix(args[len(args)-1], "op://")]; ok {
+					return []byte(v), nil, nil
+				}
+				return nil, []byte(`"item" isn't an item in the "Dev" vault`), errors.New("exit status 1")
 			},
 		}),
 	)

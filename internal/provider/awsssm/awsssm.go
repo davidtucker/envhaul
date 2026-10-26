@@ -86,6 +86,9 @@ func (p *Provider) Validate(ref *template.Ref) error {
 	if strings.Contains(ref.Path, "//") {
 		return fmt.Errorf("SSM parameter path %q must not contain //", ref.Path)
 	}
+	if strings.Contains(ref.Path, " ") {
+		return fmt.Errorf("SSM parameter path %q must not contain spaces", ref.Path)
+	}
 	return nil
 }
 

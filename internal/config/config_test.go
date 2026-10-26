@@ -143,7 +143,7 @@ func TestDiagnosticColumn(t *testing.T) {
 
 func TestValidateRefOption(t *testing.T) {
 	src := "components:\n  a:\n    env_file: .env\n    vars:\n      A: \"{{vault:x}}\"\n"
-	_, err := parse(t, src, Options{ValidateRef: func(r *template.Ref) error {
+	_, err := parse(t, src, Options{ValidateRef: func(_ *Config, r *template.Ref) error {
 		if r.Scheme != "ssm" {
 			return errors.New("unknown scheme " + r.Scheme)
 		}
@@ -281,5 +281,86 @@ func TestDiagnosticPathOutsideWorkingDir(t *testing.T) {
 	_, err := Parse(path, []byte("components: {}\n"), Options{})
 	if err == nil || !strings.Contains(err.Error(), filepath.ToSlash(path)) && !strings.Contains(err.Error(), path) {
 		t.Errorf("error = %v, want it to name %s", err, path)
+	}
+}
+
+func TestSourceBlocks(t *testing.T) {
+	cfg := mustParse(t, `
+vault:
+  address: https://vault.example.com
+  mount: kv
+  profiles:
+    prod:
+      address: https://vault.prod.example.com
+      token_env: VAULT_PROD_TOKEN
+    empty:
+onepassword:
+  account: team.1password.com
+gcp:
+components:
+  a:
+    env_file: .env
+    vars: {}
+`)
+	v := cfg.Source("vault")
+	if got := v.Setting("", "address"); got != "https://vault.example.com" {
+		t.Errorf("default address = %q", got)
+	}
+	if got := v.Setting("prod", "address"); got != "https://vault.prod.example.com" {
+		t.Errorf("profile address = %q", got)
+	}
+	if got := v.Setting("prod", "mount"); got != "kv" {
+		t.Errorf("profile should inherit mount, got %q", got)
+	}
+	if got := v.Setting("missing", "mount"); got != "kv" {
+		t.Errorf("unknown profile should fall back to defaults, got %q", got)
+	}
+	if !v.HasProfile("prod") || !v.HasProfile("empty") || v.HasProfile("missing") {
+		t.Error("HasProfile mismatch")
+	}
+	if cfg.Source("onepassword").Setting("", "account") != "team.1password.com" {
+		t.Error("onepassword account not parsed")
+	}
+	if cfg.Source("gcp") == nil {
+		t.Error("an empty gcp block should still be present")
+	}
+	var nilSource *Source
+	if cfg.Source("azure") != nil || nilSource.Setting("x", "y") != "" || nilSource.HasProfile("x") {
+		t.Error("absent blocks should be nil and safe to query")
+	}
+}
+
+func TestSourceBlockErrors(t *testing.T) {
+	tail := "components:\n  a:\n    env_file: .env\n    vars: {}\n"
+	tests := []struct{ name, src, want string }{
+		{"unknown setting", "vault:\n  url: x\n", `unknown key "url" (allowed: address, kv_version, mount, namespace, profiles, token_env)`},
+		{"unknown profile setting", "gcp:\n  profiles:\n    p:\n      region: x\n", `unknown key "region"`},
+		{"not a mapping", "azure: x\n", "azure must be a mapping of settings"},
+		{"profiles not a mapping", "vault:\n  profiles: [a]\n", "vault.profiles must be a mapping"},
+		{"profile not a mapping", "vault:\n  profiles:\n    p: x\n", `vault profile "p" must be a mapping`},
+		{"bad profile name", "vault:\n  profiles:\n    \"a b\":\n      mount: x\n", `invalid vault profile name "a b"`},
+		{"bad kv version", "vault:\n  kv_version: 3\n", "vault.kv_version must be 1 or 2"},
+		{"setting is a list", "onepassword:\n  account: [a]\n", "onepassword.account must be a string"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parse(t, tt.src+tail, Options{})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %v\nwant it to contain %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateRefSeesSettingsBelowComponents(t *testing.T) {
+	// The azure block comes after the component that depends on it.
+	src := "components:\n  a:\n    env_file: .env\n    vars:\n      A: \"{{azkv:db}}\"\nazure:\n  vault: dev-kv\n"
+	var seen string
+	_, err := parse(t, src, Options{ValidateRef: func(cfg *Config, r *template.Ref) error {
+		seen = cfg.Source("azure").Setting(r.Profile, "vault")
+		return nil
+	}})
+	if err != nil || seen != "dev-kv" {
+		t.Errorf("err=%v, validator saw vault %q; want dev-kv", err, seen)
 	}
 }

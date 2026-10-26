@@ -30,7 +30,15 @@ const starterConfig = `# yaml-language-server: $schema=` + SchemaURL + `
 #   {{secret:id}}             Secrets Manager, whole secret
 #   {{secret:id#key}}         Secrets Manager, one key of a JSON secret
 #   {{ssm:path@profile}}      use another AWS profile (e.g. another account)
+#   {{vault:app/db#password}} HashiCorp Vault / OpenBao (KV), one field
+#   {{op:vault/item/field}}   1Password, through the op CLI
+#   {{gcp:secret-name}}       Google Cloud Secret Manager
+#   {{azkv:vault/secret}}     Azure Key Vault
 #   {{ssm:path|trim|default:x}}  pipes: urlencode base64 base64decode trim lower upper default:x
+#
+# Sources other than AWS take settings from optional top-level blocks
+# (vault:, onepassword:, gcp:, azure:); see
+# https://davidtucker.github.io/envhaul/config/#source-settings
 #
 # References can be embedded in strings:
 #   DATABASE_URL: "postgresql://{{secret:db#user}}:{{secret:db#pass|urlencode}}@localhost/app"

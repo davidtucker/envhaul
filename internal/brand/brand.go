@@ -12,7 +12,7 @@ import (
 
 // Tagline is the one-line project description used in help, packages and
 // docs.
-const Tagline = "Haul config and secrets from AWS into .env files."
+const Tagline = "Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into .env files."
 
 var (
 	//go:embed banner.txt

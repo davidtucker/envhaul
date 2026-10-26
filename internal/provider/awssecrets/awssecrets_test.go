@@ -140,4 +140,8 @@ func TestIdentityAndValidate(t *testing.T) {
 	if err := p.Validate(tmpl.Refs()[0]); err != nil {
 		t.Errorf("Validate: %v", err)
 	}
+	spaced, _ := template.Parse("{{secret:my secret}}")
+	if err := p.Validate(spaced.Refs()[0]); err == nil || !strings.Contains(err.Error(), "spaces") {
+		t.Errorf("spaces: %v", err)
+	}
 }

@@ -34,9 +34,24 @@ SDK supports. When a session has expired, envhaul tells you which
 
 ## Does it support other secret stores?
 
-v1 supports AWS SSM Parameter Store and Secrets Manager. The source layer is
-pluggable and more sources are planned; see the [roadmap](roadmap.md) and
+Yes: AWS SSM Parameter Store and Secrets Manager, HashiCorp Vault and
+OpenBao, 1Password, Google Cloud Secret Manager and Azure Key Vault; see
+[Sources](sources/index.md). One config can mix all of them. The source
+layer is pluggable; see the [roadmap](roadmap.md) and
 [Adding a source](contributing/providers.md).
+
+## Why does 1Password need the `op` CLI?
+
+envhaul reads 1Password through `op` so it can reuse your existing sign-in,
+including the desktop app's biometric unlock, instead of asking for a
+separate token. In CI, a service account token in `OP_SERVICE_ACCOUNT_TOKEN`
+works the same way.
+
+## How is this different from `op run` or `op inject`?
+
+Those cover 1Password alone. envhaul writes one file per component from a
+single config that can also pull from AWS, Vault, Google Cloud and Azure, and
+it adds `diff`, `validate` and pipes.
 
 ## Why does `1.10` stay `1.10`?
 

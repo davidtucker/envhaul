@@ -16,13 +16,12 @@ func TestSchemaInSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var schema struct {
+	type object struct {
 		Properties map[string]any `json:"properties"`
-		Defs       struct {
-			Component struct {
-				Properties map[string]any `json:"properties"`
-			} `json:"component"`
-		} `json:"$defs"`
+	}
+	var schema struct {
+		Properties map[string]any    `json:"properties"`
+		Defs       map[string]object `json:"$defs"`
 	}
 	if err := json.Unmarshal(data, &schema); err != nil {
 		t.Fatalf("schema is not valid JSON: %v", err)
@@ -38,5 +37,8 @@ func TestSchemaInSync(t *testing.T) {
 		}
 	}
 	check("top-level", schema.Properties, TopLevelKeys)
-	check("component", schema.Defs.Component.Properties, ComponentKeys)
+	check("component", schema.Defs["component"].Properties, ComponentKeys)
+	for name, keys := range SourceKeys {
+		check(name, schema.Defs[name].Properties, append([]string{"profiles"}, keys...))
+	}
 }

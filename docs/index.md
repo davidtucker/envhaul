@@ -7,13 +7,15 @@ hide:
 ![envhaul](assets/brand/logo-light.svg){ .logo-light }
 ![envhaul](assets/brand/logo-dark.svg){ .logo-dark }
 
-<p class="envhaul-tagline">Haul config and secrets from AWS into <code>.env</code> files.</p>
+<p class="envhaul-tagline">Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into <code>.env</code> files.</p>
 </div>
 
 envhaul generates the `.env` files for every part of your project from one
-config file. Plain values sit in the config next to references to AWS SSM
-Parameter Store and Secrets Manager, and envhaul resolves those references
-with your named AWS profiles.
+config file. Plain values sit in the config next to references to your
+secret stores: AWS SSM Parameter Store and Secrets Manager, HashiCorp Vault
+and OpenBao, 1Password, Google Cloud Secret Manager and Azure Key Vault.
+envhaul resolves them with the sign-ins you already have, such as your named
+AWS profiles.
 
 ```yaml title="envhaul.yaml"
 name: dev
@@ -45,11 +47,14 @@ wrote  web/.env           (1 var)
 
 - **One file, every component.** API, frontend, infrastructure and tools each
   get their own `.env`, generated from one place you can review.
-- **Secrets stay in AWS.** Only references are committed. Values are fetched
-  on demand, written with mode `0600`, and never logged.
-- **Named profiles, multiple accounts.** Each reference can use its own
-  profile, so shared keys can live in another account. SSO, assume-role and
-  `credential_process` all work.
+- **Secrets stay where they are.** Only references are committed. Values
+  are fetched on demand, written with mode `0600`, and never logged.
+- **Many sources, one file.** Mix AWS, Vault, 1Password, Google Cloud and
+  Azure in the same config, even in the same value.
+- **Your existing sign-ins.** AWS profiles (SSO, assume-role,
+  `credential_process`), `vault login`, the `op` CLI, `gcloud` and
+  `az login` all work as they are, and `@profile` reaches other accounts,
+  namespaces, projects and tenants.
 - **Templates and pipes.** Build connection strings from several secrets and
   `urlencode`, `trim`, `base64` or `default` them inline.
 - **Safe by default.** `diff` masks values, `validate` catches mistakes

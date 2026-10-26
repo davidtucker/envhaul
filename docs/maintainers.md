@@ -143,7 +143,7 @@ These settings live in GitHub, not in the repository.
 **Settings → General**
 
 - [ ] Upload `.github/assets/social-preview.png` as the social preview.
-- [ ] Description: *Haul config and secrets from AWS into .env files.*
+- [ ] Description: *Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into .env files.*
       Website: `https://davidtucker.github.io/envhaul`. Topics: `dotenv`,
       `env`, `aws`, `ssm`, `secrets-manager`, `cli`, `go`, `devtools`.
 - [x] Pull requests: allow **squash merging** only, with the **PR title** as

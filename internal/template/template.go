@@ -165,8 +165,10 @@ func parseRef(inner string, offset int) (*Ref, error) {
 	if ref.Path == "" {
 		return nil, errf("empty path in %q", spec)
 	}
-	if strings.ContainsAny(ref.Path, " \t\r\n") {
-		return nil, errf("path %q must not contain whitespace", ref.Path)
+	// Spaces are allowed (1Password item and field names often have them);
+	// sources whose names can't contain spaces reject them in Validate.
+	if strings.ContainsAny(ref.Path, "\t\r\n") {
+		return nil, errf("path %q must not contain tabs or line breaks", ref.Path)
 	}
 
 	for _, seg := range segments[1:] {

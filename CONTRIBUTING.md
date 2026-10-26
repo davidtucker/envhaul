@@ -68,7 +68,7 @@ docs/                 documentation site (MkDocs Material)
 A source is a package under `internal/provider/` implementing
 `provider.Provider`:
 
-1. `Scheme()` returns the reference prefix, e.g. `vault`.
+1. `Scheme()` returns the reference prefix, e.g. `vault` or `op`.
 2. `Validate(ref)` performs offline checks (used by `validate`).
 3. `Request(ref)` applies prefixes and default profile settings.
 4. `Fetch(ctx, reqs)` fetches values, batching where the API allows. A value
@@ -85,7 +85,7 @@ for details.
   Titles must follow [Conventional Commits](https://www.conventionalcommits.org/),
   because [release-please](https://github.com/googleapis/release-please)
   derives versions and the changelog from them:
-  - `feat: add vault source` → minor release
+  - `feat: add a new source` → minor release
   - `fix: quote values containing #` → patch release
   - `feat!: rename env_file to output` (or a `BREAKING CHANGE:` footer) → major release
   - `docs:`, `test:`, `refactor:`, `ci:`, `chore:` → no release on their own

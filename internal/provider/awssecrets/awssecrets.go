@@ -79,7 +79,12 @@ func ClientsFromCache(c *awsclient.Cache) ClientFunc {
 func (p *Provider) Scheme() string      { return Scheme }
 func (p *Provider) Description() string { return "AWS Secrets Manager" }
 
-func (p *Provider) Validate(ref *template.Ref) error { return nil }
+func (p *Provider) Validate(ref *template.Ref) error {
+	if strings.Contains(ref.Path, " ") {
+		return fmt.Errorf("Secrets Manager secret id %q must not contain spaces", ref.Path)
+	}
+	return nil
+}
 
 // Request applies the prefix (except to ARNs) and default profile.
 func (p *Provider) Request(ref *template.Ref) provider.Request {

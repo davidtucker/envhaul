@@ -100,6 +100,7 @@ func defaultRegistry(cfg *config.Config, g *Globals, logger *slog.Logger) *provi
 		ProfileOverrideSet: g.ProfileSet,
 		RegionOverride:     g.Region,
 		AWS:                awsclient.NewCache(),
+		Online:             true,
 		Logger:             logger,
 	})
 }
@@ -183,7 +184,7 @@ func (a *app) loadConfig() (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := config.Load(path, config.Options{ValidateRef: providers.Validator().ValidateRef})
+	cfg, err := config.Load(path, config.Options{ValidateRef: providers.ValidateRef()})
 	if err != nil {
 		var diags config.Diagnostics
 		if errors.As(err, &diags) {

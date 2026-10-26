@@ -39,7 +39,39 @@ YAML language server (VS Code, JetBrains, Neovim, Zed):
 | `aws_region` | no | Region for every request. Overridden by `--region`. When unset, each profile's own region from `~/.aws/config` is used. |
 | `ssm_prefix` | no | Joined onto SSM paths that don't start with `/`. Must start with `/`. |
 | `secret_prefix` | no | Prepended to Secrets Manager ids that aren't ARNs, e.g. `myapp/dev/`. |
+| `vault` | no | [HashiCorp Vault / OpenBao settings](sources/vault.md#settings). |
+| `onepassword` | no | [1Password settings](sources/1password.md#settings). |
+| `gcp` | no | [Google Cloud Secret Manager settings](sources/gcp.md#settings). |
+| `azure` | no | [Azure Key Vault settings](sources/azure-key-vault.md#settings). |
 | `components` | yes | Map of component name to settings. Each component writes one file. |
+
+## Source settings
+
+Sources other than AWS each have an optional block of default settings and
+named profiles:
+
+```yaml
+vault:
+  address: https://vault.example.com
+  profiles:
+    prod:
+      address: https://vault.prod.example.com
+      token_env: VAULT_PROD_TOKEN
+
+gcp:
+  project: my-dev-project
+```
+
+- **Defaults** apply to every reference to that source.
+- **`@name` on a reference picks a profile.** The profile's settings override
+  the defaults, and anything it doesn't set falls back to them.
+- **`@name` with no matching profile** is used as the source's natural
+  scope: a Vault namespace, a 1Password account, a GCP project or an Azure
+  tenant. So `{{gcp:db-password@my-other-project}}` works without any
+  profile.
+
+Each source's page lists its settings. `validate` rejects unknown settings
+and profile names with `file:line:col` errors.
 
 ## Components
 

@@ -26,7 +26,7 @@ The wordmark is drawn as outlined paths, not set in a font, so it looks the same
     <img alt="envhaul" src=".github/assets/logo-light.svg" width="420">
   </picture>
 </p>
-<p align="center">Haul config and secrets from AWS into <code>.env</code> files.</p>
+<p align="center">Haul config and secrets from AWS, Vault, 1Password, Google Cloud and Azure into <code>.env</code> files.</p>
 ```
 
 ## Colors
