@@ -22,6 +22,10 @@ func TestQuote(t *testing.T) {
 		{"it's", `"it's"`},
 		{"line1\nline2", `"line1\nline2"`},
 		{`it's "q" \ x`, `"it's \"q\" \\ x"`},
+		// Compose and shells expand $ inside double quotes.
+		{"it's$ecret", `"it's\$ecret"`},
+		{"it's ${HOME} $(id)", `"it's \${HOME} \$(id)"`},
+		{"a$b\nc", `"a\$b\nc"`},
 	}
 	for _, tt := range tests {
 		if got := Quote(tt.in); got != tt.want {
@@ -39,6 +43,8 @@ var awkward = []Pair{
 	{"SINGLE", "it's"},
 	{"DOUBLE", `"quoted"`},
 	{"BOTH", `it's "both"`},
+	{"SINGLE_DOLLAR", "it's$ecret ${HOME} $(id)"},
+	{"MULTILINE_DOLLAR", "p@$$\nw0rd"},
 	{"BACKSLASH", `C:\path\to\n`},
 	{"MULTILINE", "-----BEGIN KEY-----\nabc\n-----END KEY-----\n"},
 	{"CRLF", "a\r\nb"},
