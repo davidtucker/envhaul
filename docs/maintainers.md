@@ -8,9 +8,21 @@
    and creates the GitHub Release.
 3. The `release` job runs GoReleaser, which builds and signs binaries,
    packages, SBOMs and the container image, attests provenance, and opens
-   commits on the Homebrew tap and Scoop bucket.
+   commits on the Homebrew tap and Scoop bucket. The tap and bucket are
+   skipped while their tokens aren't configured.
 4. Check the release page. Verify one artifact with the commands in
    [Security](security.md#verifying-releases).
+
+Stable releases come only from merging the release PR. Pushing a stable tag
+(`vX.Y.Z`) yourself does nothing, so release-please's tag and its workflow
+can't publish the same version twice.
+
+### Retrying a failed release
+
+If the release job fails after the tag exists (tags can't be moved or
+deleted), fix the cause on `main` if needed, then run **Actions → Release →
+Run workflow** with the tag, e.g. `v0.1.0`. GoReleaser replaces any assets
+that were already uploaded.
 
 ### Release candidates
 
@@ -23,7 +35,30 @@ git push origin v0.2.0-rc.1
 ```
 
 Before the first real release, cut `v0.1.0-rc.1` to check signing,
-attestations, the image push and the tap/bucket tokens end to end.
+attestations, the provenance upload and the image push end to end. The tap and
+bucket are only exercised by stable releases.
+
+### The release-please GitHub App
+
+release-please runs as a small GitHub App (`envhaul release`) rather than with
+the workflow's `GITHUB_TOKEN`. GitHub doesn't run CI on PRs opened with
+`GITHUB_TOKEN` until a maintainer approves each run, and never triggers
+`pull_request_target` checks for them, so the release PR could never satisfy
+the required checks.
+
+The App needs these repository permissions: **Contents: read and write**,
+**Pull requests: read and write** and **Issues: read and write** (for
+labels). It is installed only on this repository. The workflow reads:
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `RELEASE_PLEASE_APP_CLIENT_ID` | Actions **variable** | The App's Client ID |
+| `RELEASE_PLEASE_APP_PRIVATE_KEY` | Actions **secret** | A private key generated for the App (the whole `.pem` file) |
+
+Without them, release-please falls back to `GITHUB_TOKEN` and you'd have to
+approve the release PR's CI runs by hand. Rotate the private key by generating
+a new one in the App's settings, updating the secret, then deleting the old
+key.
 
 ### Building locally
 
@@ -59,6 +94,9 @@ These settings live in GitHub, not in the repository.
 
 **Repositories**
 
+- [ ] Create the release-please GitHub App and set
+      `RELEASE_PLEASE_APP_CLIENT_ID` / `RELEASE_PLEASE_APP_PRIVATE_KEY`
+      (see [The release-please GitHub App](#the-release-please-github-app)).
 - [ ] Create `davidtucker/homebrew-tap` (with a `Casks/` directory) and
       `davidtucker/scoop-bucket`.
 - [ ] Create fine-grained tokens with *Contents: read and write* on each, and
@@ -101,10 +139,9 @@ To change these, edit them under Settings → Rules → Rulesets, or with
 the required checks in the same change; otherwise PRs wait for a check that
 never reports.
 
-Pull requests opened by `github-actions[bot]` (the release PR) only run
-workflows after a maintainer approves them. Approve the runs on the release
-PR before merging, or give release-please a GitHub App or fine-grained token
-so its PRs run CI automatically.
+The release PR is opened by the release-please GitHub App, so its checks run
+like any other PR's. If the App isn't configured, the PR comes from
+`github-actions[bot]` and each CI run needs your approval first.
 
 **Settings → Code security**
 
@@ -121,8 +158,9 @@ so its PRs run CI automatically.
 **Settings → Actions → General**
 
 - [x] Workflow permissions: **read repository contents** by default, and
-      allow GitHub Actions to create and approve pull requests (needed by
-      release-please).
+      allow GitHub Actions to create and approve pull requests (used by the
+      Dependabot auto-merge workflow, and by release-please when the App
+      isn't configured).
 
 ## Branding
 

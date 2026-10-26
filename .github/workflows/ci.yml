@@ -84,7 +84,8 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Fuzz template parser and dotenv round trip
-        run: make fuzz FUZZTIME=30s
+        # An iteration count, not a duration: see the fuzz target in the Makefile.
+        run: make fuzz FUZZTIME=2000000x
 
   integration:
     name: Integration (AWS emulator)
