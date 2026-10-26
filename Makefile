@@ -39,9 +39,12 @@ cover: ## Run tests with coverage and open the HTML report
 	@echo "wrote coverage.html"
 
 .PHONY: fuzz
-fuzz: ## Fuzz the template parser and dotenv round trip (FUZZTIME=30s each)
-	go test -run=XXX -fuzz=FuzzParse -fuzztime=$(or $(FUZZTIME),30s) ./internal/template
-	go test -run=XXX -fuzz=FuzzRoundTrip -fuzztime=$(or $(FUZZTIME),30s) ./internal/dotenv
+# FUZZTIME is an iteration count ("2000000x") rather than a duration: with a
+# duration, Go's fuzzer can fail with "context deadline exceeded" when the
+# time runs out mid-input, which made CI flaky.
+fuzz: ## Fuzz the template parser and dotenv round trip (FUZZTIME=2000000x each)
+	go test -run=XXX -fuzz=FuzzParse -fuzztime=$(or $(FUZZTIME),2000000x) ./internal/template
+	go test -run=XXX -fuzz=FuzzRoundTrip -fuzztime=$(or $(FUZZTIME),2000000x) ./internal/dotenv
 
 .PHONY: emulator-up
 emulator-up: ## Start the AWS emulator (moto) for integration tests

@@ -132,7 +132,7 @@ homebrew_casks:
     repository:
       owner: davidtucker
       name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
     directory: Casks
     homepage: https://davidtucker.github.io/envhaul
     description: Haul config and secrets from AWS into .env files
@@ -148,8 +148,9 @@ homebrew_casks:
       bash: completions/envhaul.bash
       zsh: completions/envhaul.zsh
       fish: completions/envhaul.fish
-    # Pre-releases are not published to the tap.
-    skip_upload: auto
+    # Skipped when HOMEBREW_TAP_TOKEN isn't configured; pre-releases are
+    # never published to the tap.
+    skip_upload: '{{ if isEnvSet "HOMEBREW_TAP_TOKEN" }}auto{{ else }}true{{ end }}'
     hooks:
       post:
         # The binaries are signed via cosign, not Apple notarization; drop
@@ -165,7 +166,7 @@ scoops:
     repository:
       owner: davidtucker
       name: scoop-bucket
-      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
+      token: '{{ envOrDefault "SCOOP_BUCKET_TOKEN" "" }}'
     homepage: https://davidtucker.github.io/envhaul
     description: Haul config and secrets from AWS into .env files.
     license: Apache-2.0
@@ -173,7 +174,9 @@ scoops:
       name: envhaul-release-bot
       email: davidtucker@users.noreply.github.com
     commit_msg_template: "envhaul {{ .Tag }}"
-    skip_upload: auto
+    # Skipped when SCOOP_BUCKET_TOKEN isn't configured; pre-releases are
+    # never published to the bucket.
+    skip_upload: '{{ if isEnvSet "SCOOP_BUCKET_TOKEN" }}auto{{ else }}true{{ end }}'
 
 release:
   github:
@@ -183,6 +186,8 @@ release:
   # only attaches artifacts. For manually tagged release candidates it
   # creates the release itself.
   mode: keep-existing
+  # Lets a failed release be retried (Actions -> Release -> Run workflow).
+  replace_existing_artifacts: true
   prerelease: auto
   footer: |
     ## Verify this release

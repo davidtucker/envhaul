@@ -1,16 +1,27 @@
 name: Release
 
-# Builds, signs and publishes a release with GoReleaser. Runs after
-# release-please creates a release, or when a maintainer pushes a tag
-# (e.g. v0.2.0-rc.1 for a pre-release).
+# Builds, signs and publishes a release with GoReleaser. It runs:
+#   - from release-please.yml after merging a release PR (stable releases),
+#   - when a maintainer pushes a pre-release tag such as v0.2.0-rc.1,
+#   - manually (Actions -> Release -> Run workflow) to retry a release.
+#
+# Pushes of stable tags (vX.Y.Z) are deliberately ignored: release-please
+# creates those, and its workflow already calls this one. Reacting to the
+# tag as well would publish the same release twice.
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*-*"]
   workflow_call:
     inputs:
       tag:
         description: Tag to release
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)publish, e.g. v0.1.0
         required: true
         type: string
 
