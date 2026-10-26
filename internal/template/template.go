@@ -225,6 +225,10 @@ func (r *Ref) String() string {
 	if r.Profile != "" {
 		b.WriteByte('@')
 		b.WriteString(r.Profile)
+	} else if strings.Contains(r.Path+r.Key, "@") {
+		// A trailing "@" keeps an "@" in the path or key from being read as
+		// the profile separator.
+		b.WriteByte('@')
 	}
 	for _, p := range r.Pipes {
 		b.WriteByte('|')

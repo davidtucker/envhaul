@@ -22,6 +22,7 @@
   "packages": {
     ".": {
       "package-name": "envhaul",
+      "initial-version": "0.1.0",
       "changelog-path": "CHANGELOG.md"
     }
   }

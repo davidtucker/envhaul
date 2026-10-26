@@ -139,6 +139,25 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
+func TestRefStringAtInPath(t *testing.T) {
+	// An "@" in the path or key with no profile needs a trailing "@" so the
+	// canonical form doesn't read the path's "@" as the profile separator.
+	for _, in := range []string{"{{secret:team@corp/key@}}", "{{a:@@}}", "{{a:0000#000@@}}"} {
+		tmpl, err := Parse(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ref := tmpl.Refs()[0]
+		again, err := Parse("{{" + ref.String() + "}}")
+		if err != nil {
+			t.Fatalf("canonical form %q of %q: %v", ref.String(), in, err)
+		}
+		if got := again.Refs()[0]; got.Path != ref.Path || got.Profile != "" {
+			t.Errorf("%q round-tripped to path %q profile %q", in, got.Path, got.Profile)
+		}
+	}
+}
+
 func TestRefString(t *testing.T) {
 	in := "{{ secret:db#pass@prod | trim | default:x:y }}"
 	tmpl, err := Parse(in)
