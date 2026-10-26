@@ -32,6 +32,27 @@ make release-check   # validate .goreleaser.yaml
 make snapshot        # build every artifact into ./dist without publishing
 ```
 
+## Dependency updates
+
+Dependabot (`.github/dependabot.yml`) opens weekly or monthly update PRs for
+Go modules, GitHub Actions, the Docker images and the docs tooling.
+
+- **7-day age gate.** A new version is only proposed once it has been
+  published for 7 days (`cooldown`), which gives the ecosystem time to catch
+  compromised or broken releases. **Security updates skip the gate** and
+  arrive as soon as an advisory is published.
+- **Overriding the gate.** To exempt a dependency permanently, add it to
+  that ecosystem's `cooldown.exclude` list. For a one-off urgent update, bump
+  it yourself in a PR.
+- **Auto-merge.** `.github/workflows/dependabot-automerge.yml` turns on
+  auto-merge for updates up to `AUTOMERGE_UP_TO` (`none`, `patch` or `minor`;
+  currently `minor`). They merge only after every required check passes;
+  anything that fails stays open for you. **Major updates are never
+  auto-merged**, and a grouped PR is judged by its largest change.
+- Go module and Docker updates use the `fix(deps)` prefix, so release-please
+  proposes a patch release that ships them. Actions, test and docs updates
+  don't trigger releases.
+
 ## One-time repository setup
 
 These settings live in GitHub, not in the repository.

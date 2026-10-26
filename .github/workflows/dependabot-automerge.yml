@@ -1,12 +1,23 @@
 name: Dependabot auto-merge
 
-# Auto-approves and enables auto-merge for patch-level Dependabot updates.
-# Required status checks still have to pass; minor and major updates wait
-# for a maintainer.
+# Enables auto-merge on Dependabot PRs up to the level set in AUTOMERGE_UP_TO.
+# GitHub merges them only after every required status check passes; a PR
+# with a failing check stays open for a maintainer. Version updates have
+# already waited out the 7-day cooldown in .github/dependabot.yml.
+#
+# Grouped PRs are judged by their largest change, so a group containing a
+# major bump is never auto-merged.
 
 on: pull_request
 
 permissions: read-all
+
+env:
+  # none  - never auto-merge; review every Dependabot PR by hand
+  # patch - auto-merge patch updates (x.y.Z)
+  # minor - auto-merge minor and patch updates (x.Y.z)
+  # Major updates (X.y.z) are never auto-merged.
+  AUTOMERGE_UP_TO: minor
 
 jobs:
   automerge:
@@ -20,8 +31,23 @@ jobs:
         id: meta
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Approve and enable auto-merge for patch updates
-        if: steps.meta.outputs.update-type == 'version-update:semver-patch'
+      - name: Check the update against the policy
+        id: policy
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+        run: |
+          case "$AUTOMERGE_UP_TO/$UPDATE_TYPE" in
+            patch/version-update:semver-patch | \
+            minor/version-update:semver-patch | \
+            minor/version-update:semver-minor)
+              echo "merge=true" >> "$GITHUB_OUTPUT"
+              echo "Auto-merging ${UPDATE_TYPE#version-update:} update (policy: up to $AUTOMERGE_UP_TO)." ;;
+            *)
+              echo "merge=false" >> "$GITHUB_OUTPUT"
+              echo "Leaving for review: ${UPDATE_TYPE:-unknown} update (policy: up to $AUTOMERGE_UP_TO)." ;;
+          esac
+      - name: Approve and enable auto-merge
+        if: steps.policy.outputs.merge == 'true'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
