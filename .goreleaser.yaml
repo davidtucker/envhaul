@@ -132,7 +132,9 @@ homebrew_casks:
     repository:
       owner: davidtucker
       name: homebrew-tap
-      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
+      # GoReleaser only accepts a bare {{ .Env.NAME }} here (no functions).
+      # The release workflow always sets it, empty when there's no token.
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Casks
     homepage: https://davidtucker.github.io/envhaul
     description: Haul config and secrets from AWS into .env files
@@ -166,7 +168,9 @@ scoops:
     repository:
       owner: davidtucker
       name: scoop-bucket
-      token: '{{ envOrDefault "SCOOP_BUCKET_TOKEN" "" }}'
+      # GoReleaser only accepts a bare {{ .Env.NAME }} here (no functions).
+      # The release workflow always sets it, empty when there's no token.
+      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
     homepage: https://davidtucker.github.io/envhaul
     description: Haul config and secrets from AWS into .env files.
     license: Apache-2.0
