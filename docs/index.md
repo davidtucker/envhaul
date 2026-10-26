@@ -17,6 +17,11 @@ and OpenBao, 1Password, Google Cloud Secret Manager and Azure Key Vault.
 envhaul resolves them with the sign-ins you already have, such as your named
 AWS profiles.
 
+## How it works
+
+List each component's variables once. Inline values are committed as they
+are; references are fetched when you run `envhaul sync`.
+
 ```yaml title="envhaul.yaml"
 name: dev
 aws_profile: acme-dev
@@ -31,6 +36,8 @@ components:
       STRIPE_SECRET_KEY: "{{ssm:api/STRIPE_SECRET_KEY}}"
       OPENAI_API_KEY: "{{ssm:api/OPENAI_API_KEY@acme-shared}}"
       DATABASE_URL: "postgresql://{{secret:acme/dev/db#username}}:{{secret:acme/dev/db#password|urlencode}}@localhost/acme"
+      SIGNING_KEY: "{{vault:payments/keys#signing}}"     # HashiCorp Vault
+      GITHUB_TOKEN: "{{op:Engineering/GitHub/token}}"    # 1Password
   web:
     env_file: web/.env
     vars:
@@ -39,7 +46,7 @@ components:
 
 ```console
 $ envhaul sync
-wrote  services/api/.env  (4 vars)
+wrote  services/api/.env  (6 vars)
 wrote  web/.env           (1 var)
 ```
 
@@ -62,6 +69,47 @@ wrote  web/.env           (1 var)
   writing secrets to disk.
 - **Fast.** Identical references are fetched once, SSM reads are batched, and
   requests run concurrently.
+
+## Sources
+
+| Source | Reference |
+| --- | --- |
+| [AWS SSM Parameter Store](sources/ssm.md) | `{{ssm:api/KEY}}` |
+| [AWS Secrets Manager](sources/secrets-manager.md) | `{{secret:acme/dev/db#password}}` |
+| [HashiCorp Vault and OpenBao](sources/vault.md) | `{{vault:app/db#password}}` |
+| [1Password](sources/1password.md) | `{{op:Engineering/Stripe/credential}}` |
+| [Google Cloud Secret Manager](sources/gcp.md) | `{{gcp:db-password}}` |
+| [Azure Key Vault](sources/azure-key-vault.md) | `{{azkv:dev-kv/db-password}}` |
+
+## Install
+
+=== "Homebrew"
+
+    ```sh
+    brew install davidtucker/tap/envhaul
+    ```
+
+=== "Scoop"
+
+    ```powershell
+    scoop bucket add davidtucker https://github.com/davidtucker/scoop-bucket
+    scoop install envhaul
+    ```
+
+=== "Go"
+
+    ```sh
+    go install github.com/davidtucker/envhaul/cmd/envhaul@latest
+    ```
+
+=== "Script"
+
+    ```sh
+    curl -fsSL https://raw.githubusercontent.com/davidtucker/envhaul/main/install.sh | sh
+    ```
+
+Linux packages, Docker and verified downloads are in
+[Getting started](getting-started.md#install).
 
 [Get started](getting-started.md){ .md-button .md-button--primary }
 [Configuration reference](config.md){ .md-button }

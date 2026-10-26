@@ -16,6 +16,8 @@
   --md-primary-fg-color--dark: var(--envhaul-slate-950);
   --md-primary-bg-color: #ffffff;
   --md-accent-fg-color: var(--envhaul-amber-600);
+  /* Text on accent backgrounds (button hover): dark on amber. */
+  --md-accent-bg-color: var(--envhaul-slate-950);
   --md-typeset-a-color: var(--envhaul-amber-700);
 }
 
@@ -26,7 +28,31 @@
   --md-primary-fg-color--light: var(--envhaul-slate-800);
   --md-primary-fg-color--dark: var(--envhaul-slate-950);
   --md-accent-fg-color: var(--envhaul-amber-400);
+  --md-accent-bg-color: var(--envhaul-slate-950);
   --md-typeset-a-color: var(--envhaul-amber-400);
+}
+
+/*
+ * Buttons. Material draws them in the primary color, which here is the
+ * header's dark slate: fine on white, invisible on the dark background. In
+ * dark mode, outline buttons are amber and the primary button is solid
+ * amber.
+ */
+[data-md-color-scheme="slate"] .md-typeset .md-button {
+  color: var(--envhaul-amber-400);
+  border-color: var(--envhaul-amber-400);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .md-button--primary {
+  background-color: var(--envhaul-amber-400);
+  color: var(--envhaul-slate-950);
+}
+
+[data-md-color-scheme] .md-typeset .md-button:focus,
+[data-md-color-scheme] .md-typeset .md-button:hover {
+  background-color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: var(--envhaul-slate-950);
 }
 
 .md-header,
