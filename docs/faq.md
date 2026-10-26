@@ -35,7 +35,8 @@ SDK supports. When a session has expired, envhaul tells you which
 ## Does it support other secret stores?
 
 v1 supports AWS SSM Parameter Store and Secrets Manager. The source layer is
-pluggable and more sources are planned; see [Adding a source](contributing/providers.md).
+pluggable and more sources are planned; see the [roadmap](roadmap.md) and
+[Adding a source](contributing/providers.md).
 
 ## Why does `1.10` stay `1.10`?
 
