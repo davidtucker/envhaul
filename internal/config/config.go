@@ -194,6 +194,10 @@ func Parse(path string, data []byte, opts Options) (*Config, error) {
 		return nil, Diagnostics{{File: p.file, Msg: "config file is empty"}}
 	}
 	root := doc.Content[0]
+	if isNull(root) {
+		// e.g. a file holding only "---".
+		return nil, Diagnostics{{File: p.file, Msg: "config file is empty"}}
+	}
 	if root.Kind != yaml.MappingNode {
 		p.errorf(root, "top level must be a mapping")
 		return nil, p.diags

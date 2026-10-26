@@ -2,12 +2,18 @@ package gcpsecrets
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"hash/crc32"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,6 +44,14 @@ func (f *fakeGCP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
+		if strings.Contains(r.URL.Path, "empty@") {
+			_, _ = w.Write([]byte(`{}`))
+			return
+		}
+		if strings.Contains(r.URL.Path, "broken@") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		_ = json.NewEncoder(w).Encode(map[string]string{"accessToken": "impersonated"})
 		return
 	}
@@ -49,6 +63,10 @@ func (f *fakeGCP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(name, "/secrets/forbidden/") {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte(`{"error":{"status":"PERMISSION_DENIED","message":"denied"}}`))
+		return
+	}
+	if strings.Contains(name, "/secrets/garbage/") {
+		_, _ = w.Write([]byte("<html>proxy error</html>"))
 		return
 	}
 	if strings.Contains(name, "/secrets/disabled/") {
@@ -263,3 +281,73 @@ func TestFetchErrors(t *testing.T) {
 type errSource struct{}
 
 func (errSource) Token() (*oauth2.Token, error) { return nil, errors.New("refresh token expired") }
+
+func TestImpersonationResponseErrors(t *testing.T) {
+	src := &config.Source{Settings: map[string]string{"project": "dev"}, Profiles: map[string]map[string]string{
+		"empty":  {"impersonate_service_account": "empty@dev.iam.gserviceaccount.com"},
+		"broken": {"impersonate_service_account": "broken@dev.iam.gserviceaccount.com"},
+	}}
+	for profile, want := range map[string]string{
+		"empty":  "impersonating empty@dev.iam.gserviceaccount.com: HTTP 200",
+		"broken": "impersonating broken@dev.iam.gserviceaccount.com: HTTP 500",
+	} {
+		_, p := setup(t, src, nil, "")
+		if _, err := fetch(t, p, "gcp:db-password@"+profile); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", profile, err, want)
+		}
+	}
+}
+
+func TestUnexpectedResponse(t *testing.T) {
+	_, p := setup(t, &config.Source{Settings: map[string]string{"project": "dev"}}, nil, "")
+	if _, err := fetch(t, p, "gcp:garbage"); err == nil || !strings.Contains(err.Error(), "unexpected response") {
+		t.Errorf("non-JSON 200: err = %v", err)
+	}
+}
+
+func TestRequestKeepsInvalidPath(t *testing.T) {
+	// Validate rejects this; Request must not panic or invent a name.
+	if got := New(Options{}).Request(ref(t, "gcp:bad.name")); got.Path != "bad.name" {
+		t.Errorf("Request = %+v", got)
+	}
+}
+
+// TestApplicationDefaultFromFile loads real Application Default Credentials
+// from a service account key file, which needs no network access.
+func TestApplicationDefaultFromFile(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	creds, _ := json.Marshal(map[string]string{
+		"type":           "service_account",
+		"project_id":     "adc-project",
+		"private_key_id": "abc123",
+		"private_key":    string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})),
+		"client_email":   "reader@adc-project.iam.gserviceaccount.com",
+		"client_id":      "1",
+		"token_uri":      "https://oauth2.googleapis.com/token",
+	})
+	path := filepath.Join(t.TempDir(), "sa.json")
+	if err := os.WriteFile(path, creds, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", path)
+
+	ts, project, err := applicationDefault(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if project != "adc-project" || ts == nil {
+		t.Errorf("project = %q, token source nil = %v", project, ts == nil)
+	}
+
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", filepath.Join(t.TempDir(), "missing.json"))
+	if _, _, err := applicationDefault(context.Background()); err == nil {
+		t.Error("a missing credentials file should be an error")
+	}
+}

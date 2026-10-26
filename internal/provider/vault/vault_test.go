@@ -41,6 +41,12 @@ func (f *fakeVault) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	data, ok := f.secrets[key]
 	switch {
+	case strings.HasSuffix(r.URL.Path, "/proxy-error"):
+		// A load balancer in front of Vault answering with HTML.
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte("<html><body>502 Bad Gateway</body></html>"))
+	case strings.HasSuffix(r.URL.Path, "/garbled"):
+		_, _ = w.Write([]byte("not json"))
 	case strings.HasSuffix(r.URL.Path, "/boom"):
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"errors":["storage is sealed"]}`))
@@ -274,3 +280,49 @@ func TestCustomCA(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestUnexpectedResponses(t *testing.T) {
+	_, srv := newServer(t)
+	vars := map[string]string{"VAULT_ADDR": srv.URL, "VAULT_TOKEN": "root"}
+	v1 := &config.Source{Settings: map[string]string{"kv_version": "1"}}
+	tests := []struct {
+		name string
+		src  *config.Source
+		ref  string
+		want string
+	}{
+		// Non-JSON error bodies are reported by status alone.
+		{"html error page", nil, "vault:proxy-error", "reading secret/proxy-error at " + srv.URL + ": 502 Bad Gateway"},
+		{"garbled kv2", nil, "vault:garbled", "secret/garbled: unexpected response"},
+		{"garbled kv1", v1, "vault:garbled", "secret/garbled: unexpected response"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := New(Options{Source: tt.src, Online: true, Getenv: env(vars), HomeDir: noHome})
+			_, err := fetch(t, p, tt.ref)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("err = %v, want %q", err, tt.want)
+			}
+			if err != nil && strings.Contains(err.Error(), "<html>") {
+				t.Errorf("an HTML body should not be copied into the error: %v", err)
+			}
+		})
+	}
+}
+
+func TestHTTPClientOverride(t *testing.T) {
+	_, srv := newServer(t)
+	used := false
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		used = true
+		return http.DefaultTransport.RoundTrip(r)
+	})}
+	p := New(Options{Online: true, HTTPClient: client, Getenv: env(map[string]string{"VAULT_ADDR": srv.URL, "VAULT_TOKEN": "root"}), HomeDir: noHome})
+	if got, err := fetch(t, p, "vault:app/db"); err != nil || !got["vault:app/db"].Found || !used {
+		t.Errorf("got %v, %v, client used = %v", got, err, used)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

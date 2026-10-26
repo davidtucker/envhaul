@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -213,5 +216,56 @@ func TestSpacesInNames(t *testing.T) {
 	}
 	if args := fake.calls[0]; args[len(args)-1] != "op://Ops/Deploy key/private key" {
 		t.Errorf("op got %q as one argument? args=%q", args[len(args)-1], args)
+	}
+}
+
+// TestRealCommand runs the default runner against a fake `op` script on
+// PATH, covering process execution, argument passing and stderr.
+func TestRealCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script")
+	}
+	dir := t.TempDir()
+	script := `#!/bin/sh
+# Fake op: "op read --no-newline [--account A] op://ref"
+for last; do :; done
+case "$last" in
+  op://Dev/db/password) printf 'from fake op' ;;
+  *) echo "[ERROR] 2026/10/26 09:00:00 \"item\" isn't an item in the \"Dev\" vault." >&2; exit 1 ;;
+esac
+`
+	if err := os.WriteFile(filepath.Join(dir, "op"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	p := New(Options{Online: true})
+	found, missing := provider.Request{Path: "Dev/db/password"}, provider.Request{Path: "Dev/nope/x"}
+	got, err := p.Fetch(context.Background(), []provider.Request{found, missing})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[found].Value != "from fake op" || got[missing].Found {
+		t.Errorf("got %+v", got)
+	}
+
+	t.Setenv("PATH", t.TempDir())
+	if _, err := New(Options{Online: true}).Fetch(context.Background(), []provider.Request{found}); err == nil || !strings.Contains(err.Error(), "not found on PATH") {
+		t.Errorf("without op on PATH: err = %v", err)
+	}
+}
+
+func TestConcurrentReadError(t *testing.T) {
+	// The first read succeeds; a later, concurrent one fails.
+	run := func(_ context.Context, args []string) ([]byte, []byte, error) {
+		if args[len(args)-1] == "op://Dev/a/x" {
+			return []byte("ok"), nil, nil
+		}
+		return nil, []byte("rate limit exceeded"), errors.New("exit status 1")
+	}
+	reqs := []provider.Request{{Path: "Dev/a/x"}, {Path: "Dev/b/x"}}
+	_, err := New(Options{Online: true, Run: run}).Fetch(context.Background(), reqs)
+	if err == nil || !strings.Contains(err.Error(), "op://Dev/b/x: rate limit exceeded") {
+		t.Errorf("err = %v", err)
 	}
 }

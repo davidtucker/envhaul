@@ -188,7 +188,8 @@ func (p *Provider) Fetch(ctx context.Context, reqs []provider.Request) (map[prov
 			suffix = defaultDNSSuffix
 		}
 		vaultURL := "https://" + vault + "." + suffix
-		client, err := p.client(ctx, vaultURL, p.tenant(r.Profile))
+		tenant := p.tenant(r.Profile)
+		client, err := p.client(ctx, vaultURL, tenant)
 		if err != nil {
 			_ = eg.Wait()
 			return nil, err
@@ -196,7 +197,7 @@ func (p *Provider) Fetch(ctx context.Context, reqs []provider.Request) (map[prov
 		eg.Go(func() error {
 			p.opts.Logger.Debug("azkv get secret", "vault", vaultURL, "name", secret, "version", version)
 			resp, err := client.GetSecret(ctx, secret, version, nil)
-			res, err := result(resp, err, vaultURL, r.Path)
+			res, err := result(resp, err, vaultURL, r.Path, tenant)
 			if err != nil {
 				return err
 			}
@@ -227,7 +228,7 @@ func (p *Provider) client(ctx context.Context, vaultURL, tenant string) (API, er
 	return c, nil
 }
 
-func result(resp azsecrets.GetSecretResponse, err error, vaultURL, path string) (provider.Result, error) {
+func result(resp azsecrets.GetSecretResponse, err error, vaultURL, path, tenant string) (provider.Result, error) {
 	if err == nil {
 		if resp.Value == nil {
 			return provider.Result{}, nil
@@ -244,11 +245,11 @@ func result(resp azsecrets.GetSecretResponse, err error, vaultURL, path string) 
 	case errors.As(err, &respErr) && respErr.StatusCode == http.StatusForbidden:
 		return provider.Result{}, fmt.Errorf("azkv: permission denied reading %s from %s: the identity needs the Key Vault Secrets User role (or a get-secret access policy), or the secret is disabled", path, vaultURL)
 	case errors.As(err, &respErr) && respErr.StatusCode == http.StatusUnauthorized:
-		return provider.Result{}, fmt.Errorf("azkv: credentials rejected by %s; run `az login` again", vaultURL)
+		return provider.Result{}, fmt.Errorf("azkv: credentials rejected by %s; run `az login%s` again", vaultURL, tenantHint(tenant))
 	// When every credential in the chain is unavailable, azidentity reports
 	// an unexported error whose message names DefaultAzureCredential.
 	case errors.As(err, &authErr) || errors.As(err, &authRequired) || strings.Contains(err.Error(), "DefaultAzureCredential"):
-		return provider.Result{}, fmt.Errorf("azkv: couldn't sign in to Azure for %s: run `az login` (%w)", vaultURL, err)
+		return provider.Result{}, fmt.Errorf("azkv: couldn't sign in to Azure for %s: run `az login%s` (%w)", vaultURL, tenantHint(tenant), err)
 	case errors.As(err, &dnsErr):
 		return provider.Result{}, fmt.Errorf("azkv: can't reach %s: check the vault name", vaultURL)
 	}

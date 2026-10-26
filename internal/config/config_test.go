@@ -364,3 +364,72 @@ func TestValidateRefSeesSettingsBelowComponents(t *testing.T) {
 		t.Errorf("err=%v, validator saw vault %q; want dev-kv", err, seen)
 	}
 }
+
+func TestTopLevelSettingsAndNullProfiles(t *testing.T) {
+	cfg := mustParse(t, `
+version: 1
+secret_prefix: myapp/dev/
+vault:
+  profiles:
+onepassword:
+  profiles:
+    personal:
+components:
+  a:
+    env_file: .env
+    vars: {}
+`)
+	if cfg.Version != 1 || cfg.SecretPrefix != "myapp/dev/" {
+		t.Errorf("Version=%d SecretPrefix=%q", cfg.Version, cfg.SecretPrefix)
+	}
+	if v := cfg.Source("vault"); v == nil || len(v.Profiles) != 0 {
+		t.Errorf("null profiles should parse as none: %+v", v)
+	}
+	if !cfg.Source("onepassword").HasProfile("personal") {
+		t.Error("a profile with no settings should still exist")
+	}
+	var none *Config
+	if none.Source("vault") != nil {
+		t.Error("Source on a nil Config should be nil")
+	}
+}
+
+func TestYAMLAliasesAndEmptyDocuments(t *testing.T) {
+	cfg := mustParse(t, `
+components:
+  a:
+    env_file: .env
+    vars:
+      FIRST: &shared "{{ssm:/shared/key}}"
+      SECOND: *shared
+`)
+	if got := cfg.Component("a").Var("SECOND").Raw; got != "{{ssm:/shared/key}}" {
+		t.Errorf("alias value = %q", got)
+	}
+	for _, src := range []string{"# just a comment\n", "---\n"} {
+		if _, err := parse(t, src, Options{}); err == nil || !strings.Contains(err.Error(), "empty") {
+			t.Errorf("%q: err = %v, want an empty-file error", src, err)
+		}
+	}
+}
+
+func TestDiagnosticsSortedByPosition(t *testing.T) {
+	// Provider validation runs after parsing; its findings are merged with
+	// the parser's in file order.
+	src := "components:\n  a:\n    env_file: .env\n    vars:\n      A: \"{{x:1}}\"\n      1B: x\n      C: \"{{x:2}}\"\n"
+	_, err := parse(t, src, Options{ValidateRef: func(_ *Config, r *template.Ref) error {
+		return errors.New("bad " + r.Path)
+	}})
+	var diags Diagnostics
+	if !errors.As(err, &diags) || len(diags) != 3 {
+		t.Fatalf("err = %v", err)
+	}
+	for i := 1; i < len(diags); i++ {
+		if diags[i-1].Pos.Line > diags[i].Pos.Line {
+			t.Errorf("diagnostics out of order:\n%v", err)
+		}
+	}
+	if !strings.Contains(diags[1].Msg, "invalid variable name") {
+		t.Errorf("middle diagnostic = %q, want the parser's line-6 error", diags[1].Msg)
+	}
+}

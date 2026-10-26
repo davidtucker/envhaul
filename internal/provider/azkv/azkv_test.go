@@ -41,6 +41,10 @@ func (c kvClient) GetSecret(_ context.Context, name, version string, _ *azsecret
 	if err, ok := c.f.errs[name]; ok {
 		return azsecrets.GetSecretResponse{}, err
 	}
+	if name == "novalue" {
+		// A secret that exists but carries no value.
+		return azsecrets.GetSecretResponse{}, nil
+	}
 	v, ok := c.f.secrets[key]
 	if !ok {
 		return azsecrets.GetSecretResponse{}, &azcore.ResponseError{StatusCode: 404, ErrorCode: "SecretNotFound"}
@@ -199,5 +203,44 @@ func TestDefaultClientsBuildRealClient(t *testing.T) {
 	}
 	if _, ok := c1.(*azsecrets.Client); !ok {
 		t.Errorf("client type = %T", c1)
+	}
+}
+
+func TestSecretWithoutValueIsMissing(t *testing.T) {
+	fake := &fakeKV{}
+	p := New(Options{Source: &config.Source{Settings: map[string]string{"vault": "dev-kv"}}, Online: true, Clients: fake.clientsFunc})
+	r := p.Request(ref(t, "azkv:novalue"))
+	got, err := p.Fetch(context.Background(), []provider.Request{r})
+	if err != nil || got[r].Found {
+		t.Errorf("got %+v, %v; want not found", got[r], err)
+	}
+}
+
+func TestSignInErrorNamesTenant(t *testing.T) {
+	// When a profile pins a tenant, the sign-in hint should name it.
+	signInErr := errors.New("DefaultAzureCredential: failed to acquire a token.\nAzureCLICredential: Please run 'az login' to set up an account")
+	src := &config.Source{
+		Settings: map[string]string{"vault": "dev-kv"},
+		Profiles: map[string]map[string]string{"prod": {"tenant": "t-prod"}},
+	}
+	tests := map[string]string{
+		"azkv:boom@prod":     "run `az login --tenant t-prod`",
+		"azkv:boom@t-direct": "run `az login --tenant t-direct`",
+		"azkv:boom":          "run `az login` (",
+	}
+	for in, want := range tests {
+		fake := &fakeKV{errs: map[string]error{"boom": signInErr}}
+		p := New(Options{Source: src, Online: true, Clients: fake.clientsFunc})
+		_, err := p.Fetch(context.Background(), []provider.Request{p.Request(ref(t, in))})
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", in, err, want)
+		}
+	}
+
+	fake := &fakeKV{errs: map[string]error{"boom": &azcore.ResponseError{StatusCode: 401}}}
+	p := New(Options{Source: src, Online: true, Clients: fake.clientsFunc})
+	_, err := p.Fetch(context.Background(), []provider.Request{p.Request(ref(t, "azkv:boom@prod"))})
+	if err == nil || !strings.Contains(err.Error(), "run `az login --tenant t-prod` again") {
+		t.Errorf("401 with tenant: err = %v", err)
 	}
 }
