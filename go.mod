@@ -14,7 +14,7 @@ require (
 	github.com/aws/smithy-go v1.28.6
 	github.com/rogpeppe/go-internal v1.16.0
 	github.com/spf13/cobra v1.10.2
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.24.0
 )
